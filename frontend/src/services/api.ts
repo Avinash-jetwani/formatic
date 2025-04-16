@@ -98,7 +98,17 @@ export const formsService = {
       body: JSON.stringify(fieldData),
     });
   },
-  
+  updateField:  async (formId: string, fieldId: string, fieldData: any) => {
+    return fetchApi(`/forms/${formId}/fields/${fieldId}`, {
+         method: 'PATCH', 
+         body: JSON.stringify(fieldData), 
+        });
+  },
+  deleteField:  async (formId: string, fieldId: string) => {
+    return fetchApi(`/forms/${formId}/fields/${fieldId}`, {
+         method: 'DELETE', 
+        });
+  },           
   getPublicForm: async (clientId: string, slug: string) => {
     return fetchApi(`/forms/public/${clientId}/${slug}`);
   },
