@@ -10,13 +10,15 @@ exports.SubmissionsModule = void 0;
 const common_1 = require("@nestjs/common");
 const submissions_service_1 = require("./submissions.service");
 const submissions_controller_1 = require("./submissions.controller");
+const prisma_module_1 = require("../prisma/prisma.module");
 let SubmissionsModule = class SubmissionsModule {
 };
 exports.SubmissionsModule = SubmissionsModule;
 exports.SubmissionsModule = SubmissionsModule = __decorate([
     (0, common_1.Module)({
+        imports: [prisma_module_1.PrismaModule],
+        controllers: [submissions_controller_1.SubmissionsController],
         providers: [submissions_service_1.SubmissionsService],
-        controllers: [submissions_controller_1.SubmissionsController]
     })
 ], SubmissionsModule);
 //# sourceMappingURL=submissions.module.js.map
