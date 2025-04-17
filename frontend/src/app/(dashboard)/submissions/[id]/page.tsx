@@ -1,4 +1,3 @@
-// src/app/(dashboard)/submissions/[id]/page.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -6,12 +5,18 @@ import { useRouter } from 'next/navigation';
 import { submissionsService, formsService } from '@/services/api';
 
 export default function SubmissionDetailPage({ params }: { params: { id: string } }) {
+  // Unwrap params with React.use if available
+  const unwrappedParams = typeof React.use === 'function' 
+    ? React.use(params) 
+    : params;
+  
+  const id = unwrappedParams.id;
+  
   const [submission, setSubmission] = useState<any>(null);
   const [form, setForm] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const router = useRouter();
-  const { id } = params;
 
   useEffect(() => {
     const fetchData = async () => {

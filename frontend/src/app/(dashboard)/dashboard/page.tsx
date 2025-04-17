@@ -3,10 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { formsService, submissionsService } from '@/services/api';
-import { AuthProvider } from '@/contexts/AuthContext';
 
-// Separate component that uses the auth context
-function DashboardContent() {
+export default function DashboardPage() {
   const { user } = useAuth();
   const [stats, setStats] = useState({
     formCount: 0,
@@ -118,14 +116,5 @@ function DashboardContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-// Main page component with AuthProvider
-export default function DashboardPage() {
-  return (
-    <AuthProvider>
-      <DashboardContent />
-    </AuthProvider>
   );
 }
