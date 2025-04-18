@@ -15,6 +15,7 @@ const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const forms_module_1 = require("./forms/forms.module");
 const submissions_module_1 = require("./submissions/submissions.module");
+const analytics_module_1 = require("./analytics/analytics.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -26,6 +27,7 @@ exports.AppModule = AppModule = __decorate([
             users_module_1.UsersModule,
             forms_module_1.FormsModule,
             submissions_module_1.SubmissionsModule,
+            analytics_module_1.AnalyticsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

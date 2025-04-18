@@ -154,3 +154,16 @@ export const usersService = {
   deleteUser: async (id: string) =>
     fetchApi(`/users/${id}`, { method: 'DELETE' }),
 };
+
+// analyticsService
+export const analyticsService = {
+  getClientGrowth: async (start: string, end: string) =>
+    fetchApi(`/analytics/clients/growth?start=${start}&end=${end}`),
+  getFormQuality: async () =>
+    fetchApi('/analytics/forms/quality'),
+  getSubmissionFunnel: async (formId: string) =>
+    fetchApi(`/analytics/submissions/funnel?formId=${formId}`),
+  getFieldDistribution: async (clientId: string) =>
+    fetchApi(`/analytics/fields/distribution?clientId=${clientId}`),
+  // …repeat for each endpoint…
+};
