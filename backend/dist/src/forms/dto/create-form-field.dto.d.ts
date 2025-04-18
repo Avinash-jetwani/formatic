@@ -6,4 +6,5 @@ export declare class CreateFormFieldDto {
     required?: boolean;
     order: number;
     options?: string[];
+    config?: Record<string, any>;
 }

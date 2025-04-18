@@ -3,24 +3,21 @@
 
 import React, { useState, useEffect, FormEvent } from 'react'
 import { useParams } from 'next/navigation'
-import { formsService, submissionsService } from '@/services/api'
+import { formsService, submissionsService, FieldType } from '@/services/api'
 
 export default function PublicFormPage() {
-  // pull clientId & slug from the URL
   const { clientId, slug } = useParams() as {
     clientId: string
     slug: string
   }
 
-  // your existing state variables
-  const [loading, setLoading]         = useState(true)
-  const [form, setForm]               = useState<any>(null)
-  const [formValues, setFormValues]   = useState<Record<string, any>>({})
-  const [error, setError]             = useState('')
-  const [submitting, setSubmitting]   = useState(false)
-  const [submitted, setSubmitted]     = useState(false)
+  const [loading, setLoading]       = useState(true)
+  const [form, setForm]             = useState<any>(null)
+  const [formValues, setFormValues] = useState<Record<string, any>>({})
+  const [error, setError]           = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted]   = useState(false)
 
-  // fetch the form once on mount
   useEffect(() => {
     async function load() {
       try {
@@ -29,12 +26,13 @@ export default function PublicFormPage() {
           setError(error)
         } else {
           setForm(data)
-          // initialize formValues
-          const initialValues: Record<string, any> = {}
+          // initialize values
+          const init: Record<string, any> = {}
           data.fields.forEach((f: any) => {
-            initialValues[f.label] = f.type === 'CHECKBOX' ? [] : ''
+            if (f.type === FieldType.CHECKBOX) init[f.label] = []
+            else init[f.label] = ''
           })
-          setFormValues(initialValues)
+          setFormValues(init)
         }
       } catch {
         setError('Failed to load form')
@@ -45,277 +43,351 @@ export default function PublicFormPage() {
     load()
   }, [clientId, slug])
 
-  // handle inputs (text, select, checkbox, radio)
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type, checked } = e.target as any
-    if (type === 'checkbox') {
-      setFormValues(prev => {
-        const current: string[] = prev[name] || []
-        if (checked) {
-          return { ...prev, [name]: [...current, value] }
-        } else {
-          return { ...prev, [name]: current.filter(v => v !== value) }
+  const handleInputChange = (e: any) => {
+    const { name, value, type, checked } = e.target
+    setFormValues(prev => {
+      if (type === 'checkbox') {
+        const arr = prev[name] || []
+        return {
+          ...prev,
+          [name]: checked
+            ? [...arr, value]
+            : arr.filter((v: string) => v !== value),
         }
-      })
-    } else {
-      setFormValues(prev => ({ ...prev, [name]: value }))
-    }
+      }
+      return { ...prev, [name]: value }
+    })
   }
 
-  // your existing submit handler
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
     setError('')
 
+    // required validation
+    const missing = form.fields
+      .filter((f: any) => f.required)
+      .filter((f: any) => {
+        const val = formValues[f.label]
+        if (f.type === FieldType.CHECKBOX) return !val?.length
+        return !val
+      })
+
+    if (missing.length) {
+      setError(
+        'Please fill: ' + missing.map((f: any) => f.label).join(', ')
+      )
+      return setSubmitting(false)
+    }
+
     try {
-      // validate required
-      const missingRequired = form.fields
-        .filter((field: any) => field.required)
-        .filter((field: any) => {
-          if (field.type === 'CHECKBOX') {
-            return !formValues[field.label] || formValues[field.label].length === 0
-          }
-          return !formValues[field.label]
-        })
-
-      if (missingRequired.length > 0) {
-        setError(
-          `Please fill out all required fields: ${missingRequired
-            .map((f: any) => f.label)
-            .join(', ')}`
-        )
-        setSubmitting(false)
-        return
-      }
-
-      const submissionData = {
-        formId: form.id,
-        data: formValues,
-      }
-
-      const { data, error } = await submissionsService.createSubmission(submissionData)
-
+      const payload = { formId: form.id, data: formValues }
+      const { data, error } = await submissionsService.createSubmission(payload)
       if (data && !error) {
         setSubmitted(true)
-        // reset formValues
-        const initialValues: Record<string, any> = {}
-        form.fields.forEach((field: any) => {
-          initialValues[field.label] = field.type === 'CHECKBOX' ? [] : ''
-        })
-        setFormValues(initialValues)
       } else {
-        setError(error || 'Failed to submit form')
+        setError(error || 'Submit failed')
       }
     } catch {
-      setError('An error occurred. Please try again.')
+      setError('Submit error')
     } finally {
       setSubmitting(false)
     }
   }
 
-  // your existing loading / error / not-found / unpublished / submitted blocks
-  if (loading) {
+  if (loading)
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full" />
       </div>
     )
-  }
 
-  if (error) {
+  if (error)
     return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="text-red-500">
-              <h2 className="text-xl font-semibold mb-2">Error</h2>
-              <p>{error}</p>
-            </div>
-          </div>
-        </div>
+      <div className="max-w-md mx-auto p-6 bg-red-50 text-red-700 rounded">
+        <h2 className="font-semibold mb-2">Error</h2>
+        <p>{error}</p>
       </div>
     )
-  }
 
-  if (!form) {
+  if (!form)
     return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-2">Form Not Found</h2>
-              <p>The form you're looking for doesn't exist or has been removed.</p>
-            </div>
-          </div>
-        </div>
+      <div className="max-w-md mx-auto p-6 bg-yellow-50 text-yellow-700 rounded">
+        <h2 className="font-semibold mb-2">Form Not Found</h2>
       </div>
     )
-  }
 
-  if (!form.published) {
+  if (!form.published)
     return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-2">Form Not Available</h2>
-              <p>This form is currently not published.</p>
-            </div>
-          </div>
-        </div>
+      <div className="max-w-md mx-auto p-6 bg-gray-100 text-gray-700 rounded">
+        <h2 className="font-semibold mb-2">Not Published</h2>
       </div>
     )
-  }
 
-  if (submitted) {
+  if (submitted)
     return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="text-center">
-              <h2 className="text-xl font-semibold mb-2 text-green-600">
-                Form Submitted Successfully!
-              </h2>
-              <p className="mb-4">Thank you for your submission.</p>
-              <button
-                onClick={() => setSubmitted(false)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-              >
-                Submit Another Response
-              </button>
-            </div>
-          </div>
-        </div>
+      <div className="max-w-md mx-auto p-6 bg-green-50 text-green-700 rounded">
+        <h2 className="font-semibold mb-2">Thank you!</h2>
+        <p>Your response has been submitted.</p>
       </div>
     )
-  }
 
-  // final render: the actual form
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold mb-2">{form.title}</h1>
-            {form.description && <p className="text-gray-600">{form.description}</p>}
-          </div>
+      <div className="max-w-xl mx-auto bg-white p-6 rounded-lg shadow">
+        <h1 className="text-2xl font-bold mb-2">{form.title}</h1>
+        {form.description && <p className="text-gray-600 mb-4">{form.description}</p>}
 
-          <form onSubmit={handleSubmit}>
-            {form.fields && form.fields.length > 0 ? (
-              <div className="space-y-6">
-                {form.fields
-                  .sort((a: any, b: any) => a.order - b.order)
-                  .map((field: any) => (
-                    <div key={field.id} className="space-y-2">
-                      <label className="block font-medium text-gray-700">
-                        {field.label}
-                        {field.required && <span className="text-red-500 ml-1">*</span>}
-                      </label>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {form.fields
+            .sort((a: any, b: any) => a.order - b.order)
+            .map((field: any) => (
+              <div key={field.id}>
+                <label className="block font-medium text-gray-700 mb-1">
+                  {field.label}
+                  {field.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
 
-                      {field.type === 'TEXT' && (
-                        <input
-                          type="text"
-                          name={field.label}
-                          value={formValues[field.label] || ''}
-                          onChange={handleInputChange}
-                          placeholder={field.placeholder || ''}
-                          required={field.required}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      )}
+                {/* TEXT */}
+                {field.type === FieldType.TEXT && (
+                  <input
+                    type="text"
+                    name={field.label}
+                    placeholder={field.placeholder || ''}
+                    value={formValues[field.label] || ''}
+                    onChange={handleInputChange}
+                    className="w-full border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
+                    required={field.required}
+                  />
+                )}
 
-                      {field.type === 'DROPDOWN' && (
-                        <select
-                          name={field.label}
-                          value={formValues[field.label] || ''}
-                          onChange={handleInputChange}
-                          required={field.required}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          <option value="">Select an option</option>
-                          {field.options.map((option: string, index: number) => (
-                            <option key={index} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                {/* LONG_TEXT */}
+                {field.type === FieldType.LONG_TEXT && (
+                  <textarea
+                    name={field.label}
+                    placeholder={field.placeholder || ''}
+                    value={formValues[field.label] || ''}
+                    onChange={handleInputChange}
+                    className="w-full border-gray-300 rounded-md p-2 focus:ring-blue-500 focus:border-blue-500"
+                    required={field.required}
+                  />
+                )}
 
-                      {field.type === 'CHECKBOX' && (
-                        <div className="space-y-2">
-                          {field.options.map((option: string, index: number) => (
-                            <div key={index} className="flex items-center">
-                              <input
-                                type="checkbox"
-                                name={field.label}
-                                value={option}
-                                checked={(formValues[field.label] || []).includes(option)}
-                                onChange={handleInputChange}
-                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                              />
-                              <label className="ml-2 text-gray-700">{option}</label>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                {/* EMAIL */}
+                {field.type === FieldType.EMAIL && (
+                  <input
+                    type="email"
+                    name={field.label}
+                    placeholder={field.placeholder || ''}
+                    value={formValues[field.label] || ''}
+                    onChange={handleInputChange}
+                    className="w-full border-gray-300 rounded-md p-2"
+                    required={field.required}
+                  />
+                )}
 
-                      {field.type === 'RADIO' && (
-                        <div className="space-y-2">
-                          {field.options.map((option: string, index: number) => (
-                            <div key={index} className="flex items-center">
-                              <input
-                                type="radio"
-                                name={field.label}
-                                value={option}
-                                checked={formValues[field.label] === option}
-                                onChange={handleInputChange}
-                                required={field.required}
-                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                              />
-                              <label className="ml-2 text-gray-700">{option}</label>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                {/* URL */}
+                {field.type === FieldType.URL && (
+                  <input
+                    type="url"
+                    name={field.label}
+                    placeholder={field.placeholder || ''}
+                    value={formValues[field.label] || ''}
+                    onChange={handleInputChange}
+                    className="w-full border-gray-300 rounded-md p-2"
+                    required={field.required}
+                  />
+                )}
 
-                      {field.type === 'FILE' && (
-                        <div>
-                          <input
-                            type="file"
-                            name={field.label}
-                            required={field.required}
-                            className="w-full"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            File upload functionality will be implemented in a future update.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                {/* NUMBER */}
+                {field.type === FieldType.NUMBER && (
+                  <input
+                    type="number"
+                    name={field.label}
+                    placeholder={field.placeholder || ''}
+                    value={formValues[field.label] || ''}
+                    onChange={handleInputChange}
+                    min={field.config?.min}
+                    max={field.config?.max}
+                    step={field.config?.step}
+                    className="w-full border-gray-300 rounded-md p-2"
+                    required={field.required}
+                  />
+                )}
 
-                <div className="mt-8">
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className={`w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md ${
-                      submitting ? 'opacity-70 cursor-not-allowed' : ''
-                    }`}
+                {/* DATE / TIME / DATETIME */}
+                {(field.type === FieldType.DATE ||
+                  field.type === FieldType.TIME ||
+                  field.type === FieldType.DATETIME) && (
+                  <input
+                    type={
+                      field.type === FieldType.DATE
+                        ? 'date'
+                        : field.type === FieldType.TIME
+                        ? 'time'
+                        : 'datetime-local'
+                    }
+                    name={field.label}
+                    value={formValues[field.label] || ''}
+                    onChange={handleInputChange}
+                    min={field.config?.min}
+                    max={field.config?.max}
+                    className="w-full border-gray-300 rounded-md p-2"
+                    required={field.required}
+                  />
+                )}
+
+                {/* DROPDOWN */}
+                {field.type === FieldType.DROPDOWN && (
+                  <select
+                    name={field.label}
+                    value={formValues[field.label] || ''}
+                    onChange={handleInputChange}
+                    className="w-full border-gray-300 rounded-md p-2"
+                    required={field.required}
                   >
-                    {submitting ? 'Submitting...' : 'Submit'}
-                  </button>
-                </div>
+                    <option value="">Select…</option>
+                    {field.options.map((opt: string, i: number) => (
+                      <option key={i} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {/* CHECKBOX */}
+                {field.type === FieldType.CHECKBOX && (
+                  <div className="space-y-2">
+                    {field.options.map((opt: string, i: number) => (
+                      <label key={i} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          name={field.label}
+                          value={opt}
+                          checked={(formValues[field.label] || []).includes(opt)}
+                          onChange={handleInputChange}
+                          className="mr-2"
+                        />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {/* RADIO */}
+                {field.type === FieldType.RADIO && (
+                  <div className="space-y-2">
+                    {field.options.map((opt: string, i: number) => (
+                      <label key={i} className="flex items-center">
+                        <input
+                          type="radio"
+                          name={field.label}
+                          value={opt}
+                          checked={formValues[field.label] === opt}
+                          onChange={handleInputChange}
+                          className="mr-2"
+                        />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {/* PHONE */}
+                {field.type === FieldType.PHONE && (
+                  <input
+                    type="tel"
+                    name={field.label}
+                    placeholder={field.placeholder || ''}
+                    value={formValues[field.label] || ''}
+                    onChange={handleInputChange}
+                    className="w-full border-gray-300 rounded-md p-2"
+                    pattern="[0-9+]*"
+                    required={field.required}
+                  />
+                )}
+
+                {/* FILE */}
+                {field.type === FieldType.FILE && (
+                  <input
+                    type="file"
+                    name={field.label}
+                    required={field.required}
+                    className="w-full"
+                  />
+                )}
+
+                {/* SLIDER */}
+                {field.type === FieldType.SLIDER && (
+                  <input
+                    type="range"
+                    name={field.label}
+                    min={field.config?.min ?? 0}
+                    max={field.config?.max ?? 100}
+                    step={field.config?.step ?? 1}
+                    value={formValues[field.label] || field.config?.min || 0}
+                    onChange={handleInputChange}
+                    className="w-full"
+                  />
+                )}
+
+                {/* RATING */}
+                {field.type === FieldType.RATING && (
+                  <div className="flex space-x-1">
+                    {Array.from({ length: field.config?.maxStars || 5 }).map((_, i) => (
+                      <label key={i} className="cursor-pointer">
+                        <input
+                          type="radio"
+                          name={field.label}
+                          value={i + 1}
+                          checked={formValues[field.label] === String(i + 1)}
+                          onChange={handleInputChange}
+                          className="hidden"
+                        />
+                        <svg
+                          className={`w-6 h-6 ${
+                            formValues[field.label] >= i + 1
+                              ? 'fill-yellow-400'
+                              : 'fill-gray-300'
+                          }`}
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 ... (star path)" />
+                        </svg>
+                      </label>
+                    ))}
+                  </div>
+                )}
+
+                {/* SCALE */}
+                {field.type === FieldType.SCALE && (
+                  <div className="flex space-x-4">
+                    {(field.config?.labels || []).map((lbl: string, i: number) => (
+                      <label key={i} className="flex items-center">
+                        <input
+                          type="radio"
+                          name={field.label}
+                          value={lbl}
+                          checked={formValues[field.label] === lbl}
+                          onChange={handleInputChange}
+                          className="mr-1"
+                        />
+                        {lbl}
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <p>This form has no fields.</p>
-              </div>
-            )}
-          </form>
-        </div>
+            ))}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+          >
+            {submitting ? 'Submitting…' : 'Submit'}
+          </button>
+        </form>
       </div>
     </div>
   )

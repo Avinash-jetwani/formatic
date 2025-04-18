@@ -44,6 +44,7 @@ model FormField {
   placeholder String?
   required    Boolean    @default(false)
   options     String[]   @default([])
+  config      Json?      @default("{}")
   order       Int
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -64,6 +65,17 @@ enum Role {
 
 enum FieldType {
   TEXT
+  LONG_TEXT   
+  EMAIL      
+  PHONE        
+  URL        
+  NUMBER       
+  DATE      
+  TIME        
+  DATETIME    
+  RATING      
+  SLIDER     
+  SCALE      
   DROPDOWN
   CHECKBOX
   RADIO

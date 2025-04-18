@@ -3,6 +3,7 @@ import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFormFieldDto } from './dto/create-form-field.dto';
+import { UpdateFormFieldDto } from './dto/update-form-field.dto';
 import { Role } from '@prisma/client';
 
 @Injectable()
@@ -143,40 +144,43 @@ export class FormsService {
     return { id };
   }
 
-  async addField(formId: string, userId: string, userRole: Role, createFormFieldDto: CreateFormFieldDto) {
-    // Check if form exists and user has permission
+  async addField(
+    formId: string,
+    userId: string,
+    userRole: Role,
+    createFormFieldDto: CreateFormFieldDto
+  ) {
     await this.findOne(formId, userId, userRole);
-    
+  
     return this.prisma.formField.create({
       data: {
-        ...createFormFieldDto,
         formId,
+        ...createFormFieldDto,
+        // config will be undefined if none provided, which is fine
       },
     });
   }
-
+  
   async updateField(
-    formId: string, 
-    fieldId: string, 
-    userId: string, 
-    userRole: Role, 
-    updateFormFieldDto: CreateFormFieldDto
+    formId: string,
+    fieldId: string,
+    userId: string,
+    userRole: Role,
+    updateFormFieldDto: UpdateFormFieldDto
   ) {
-    // Check if form exists and user has permission
     await this.findOne(formId, userId, userRole);
-    
-    // Check if field exists
-    const field = await this.prisma.formField.findUnique({
-      where: { id: fieldId },
-    });
-    
+  
+    const field = await this.prisma.formField.findUnique({ where: { id: fieldId } });
     if (!field || field.formId !== formId) {
-      throw new NotFoundException(`Field with ID ${fieldId} not found in form ${formId}`);
+      throw new NotFoundException(`Field ${fieldId} not found in form ${formId}`);
     }
-    
+  
     return this.prisma.formField.update({
       where: { id: fieldId },
-      data: updateFormFieldDto,
+      data: {
+        ...updateFormFieldDto,
+        // this will merge in any new config keys or overwrite existing
+      },
     });
   }
 

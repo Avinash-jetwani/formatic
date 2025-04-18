@@ -17,6 +17,7 @@ import {
   import { Roles } from '../auth/decorators/roles.decorator';
   import { Role } from '@prisma/client';
   import { CreateFormFieldDto } from './dto/create-form-field.dto';
+  import { UpdateFormFieldDto } from './dto/update-form-field.dto';
   
   @Controller('forms')
   export class FormsController {
@@ -69,19 +70,19 @@ import {
     @Patch(':id/fields/:fieldId')
     @UseGuards(JwtAuthGuard)
     updateField(
-      @Param('id') id: string,
-      @Param('fieldId') fieldId: string,
-      @Request() req,
-      @Body() updateFormFieldDto: CreateFormFieldDto
-    ) {
-      return this.formsService.updateField(
-        id, 
-        fieldId, 
-        req.user.id, 
-        req.user.role, 
-        updateFormFieldDto
-      );
-    }
+       @Param('id') id: string,
+       @Param('fieldId') fieldId: string,
+       @Request() req,
+       @Body() updateFormFieldDto: UpdateFormFieldDto
+     ) {
+       return this.formsService.updateField(
+         id,
+         fieldId,
+         req.user.id,
+         req.user.role,
+         updateFormFieldDto
+       );
+     }
   
     @Delete(':id/fields/:fieldId')
     @UseGuards(JwtAuthGuard)

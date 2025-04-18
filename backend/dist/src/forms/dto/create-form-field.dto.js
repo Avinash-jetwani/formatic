@@ -50,4 +50,9 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Array)
 ], CreateFormFieldDto.prototype, "options", void 0);
+__decorate([
+    (0, class_validator_1.IsObject)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Object)
+], CreateFormFieldDto.prototype, "config", void 0);
 //# sourceMappingURL=create-form-field.dto.js.map

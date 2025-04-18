@@ -1,4 +1,13 @@
-import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { FieldType } from '@prisma/client';
 
 export class CreateFormFieldDto {
@@ -26,4 +35,9 @@ export class CreateFormFieldDto {
   @IsString({ each: true })
   @IsOptional()
   options?: string[] = [];
+
+  // ← new: any type‑specific config, e.g. { maxChars: 5000 } or { min:0, max:100, step:1 }
+  @IsObject()
+  @IsOptional()
+  config?: Record<string, any>;
 }

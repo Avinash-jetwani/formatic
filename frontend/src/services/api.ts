@@ -6,17 +6,47 @@ export interface ApiResponse<T = any> {
   error?: string;
 }
 
+// ─── FieldType & DTO Definitions ────────────────────────────────────────────
+export enum FieldType {
+  TEXT       = 'TEXT',
+  LONG_TEXT  = 'LONG_TEXT',
+  EMAIL      = 'EMAIL',
+  PHONE      = 'PHONE',
+  URL        = 'URL',
+  NUMBER     = 'NUMBER',
+  DATE       = 'DATE',
+  TIME       = 'TIME',
+  DATETIME   = 'DATETIME',
+  RATING     = 'RATING',
+  SLIDER     = 'SLIDER',
+  SCALE      = 'SCALE',
+  DROPDOWN   = 'DROPDOWN',
+  CHECKBOX   = 'CHECKBOX',
+  RADIO      = 'RADIO',
+  FILE       = 'FILE',
+}
+
+export interface CreateFormFieldDto {
+  label: string;
+  type: FieldType;
+  placeholder?: string;
+  required?: boolean;
+  order: number;
+  options?: string[];
+  config?: Record<string, any>;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const fetchApi = async <T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
   try {
-    // Use localStorage only on the client side
     let token = '';
     if (typeof window !== 'undefined') {
       token = localStorage.getItem('token') || '';
     }
-    
+
     const headers = {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -27,13 +57,11 @@ export const fetchApi = async <T>(
       ...options,
       headers,
     });
-
     const data = await response.json();
 
     if (!response.ok) {
       return { error: data.message || 'Something went wrong' };
     }
-
     return { data };
   } catch (error) {
     console.error('API error:', error);
@@ -49,14 +77,14 @@ export const authService = {
       body: JSON.stringify({ email, password }),
     });
   },
-  
+
   register: async (email: string, password: string, name?: string) => {
     return fetchApi('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ email, password, name }),
     });
   },
-  
+
   getProfile: async () => {
     return fetchApi('/auth/profile');
   },
@@ -64,111 +92,65 @@ export const authService = {
 
 // Forms services
 export const formsService = {
-  getAllForms: async () => {
-    return fetchApi('/forms');
-  },
-  
-  getForm: async (id: string) => {
-    return fetchApi(`/forms/${id}`);
-  },
-  
-  createForm: async (formData: any) => {
-    return fetchApi('/forms', {
-      method: 'POST',
-      body: JSON.stringify(formData),
-    });
-  },
-  
-  updateForm: async (id: string, formData: any) => {
-    return fetchApi(`/forms/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(formData),
-    });
-  },
-  
-  deleteForm: async (id: string) => {
-    return fetchApi(`/forms/${id}`, {
-      method: 'DELETE',
-    });
-  },
-  
-  addField: async (formId: string, fieldData: any) => {
-    return fetchApi(`/forms/${formId}/fields`, {
+  getAllForms: async () => fetchApi('/forms'),
+  getForm: async (id: string) => fetchApi(`/forms/${id}`),
+  createForm: async (formData: any) =>
+    fetchApi('/forms', { method: 'POST', body: JSON.stringify(formData) }),
+  updateForm: async (id: string, formData: any) =>
+    fetchApi(`/forms/${id}`, { method: 'PATCH', body: JSON.stringify(formData) }),
+  deleteForm: async (id: string) =>
+    fetchApi(`/forms/${id}`, { method: 'DELETE' }),
+
+  // New signatures:
+  addField: async (formId: string, fieldData: CreateFormFieldDto) =>
+    fetchApi(`/forms/${formId}/fields`, {
       method: 'POST',
       body: JSON.stringify(fieldData),
-    });
-  },
-  updateField:  async (formId: string, fieldId: string, fieldData: any) => {
-    return fetchApi(`/forms/${formId}/fields/${fieldId}`, {
-         method: 'PATCH', 
-         body: JSON.stringify(fieldData), 
-        });
-  },
-  deleteField:  async (formId: string, fieldId: string) => {
-    return fetchApi(`/forms/${formId}/fields/${fieldId}`, {
-         method: 'DELETE', 
-        });
-  },           
-  getPublicForm: async (clientId: string, slug: string) => {
-    return fetchApi(`/forms/public/${clientId}/${slug}`);
-  },
+    }),
+
+  updateField: async (
+    formId: string,
+    fieldId: string,
+    fieldData: Partial<CreateFormFieldDto>
+  ) =>
+    fetchApi(`/forms/${formId}/fields/${fieldId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(fieldData),
+    }),
+
+  deleteField: async (formId: string, fieldId: string) =>
+    fetchApi(`/forms/${formId}/fields/${fieldId}`, { method: 'DELETE' }),
+
+  getPublicForm: async (clientId: string, slug: string) =>
+    fetchApi(`/forms/public/${clientId}/${slug}`),
 };
 
 // Submissions services
 export const submissionsService = {
-  getAllSubmissions: async () => {
-    return fetchApi('/submissions');
-  },
-  
-  getSubmission: async (id: string) => {
-    return fetchApi(`/submissions/${id}`);
-  },
-  
-  getFormSubmissions: async (formId: string) => {
-    return fetchApi(`/submissions/form/${formId}`);
-  },
-  
-  createSubmission: async (submissionData: any) => {
-    return fetchApi('/submissions', {
+  getAllSubmissions: async () => fetchApi('/submissions'),
+  getSubmission: async (id: string) => fetchApi(`/submissions/${id}`),
+  getFormSubmissions: async (formId: string) =>
+    fetchApi(`/submissions/form/${formId}`),
+  createSubmission: async (submissionData: any) =>
+    fetchApi('/submissions', {
       method: 'POST',
       body: JSON.stringify(submissionData),
-    });
-  },
-  
-  deleteSubmission: async (id: string) => {
-    return fetchApi(`/submissions/${id}`, {
-      method: 'DELETE',
-    });
-  },
+    }),
+  deleteSubmission: async (id: string) =>
+    fetchApi(`/submissions/${id}`, { method: 'DELETE' }),
 };
 
 // Users services (Admin only)
 export const usersService = {
-  getAllUsers: async () => {
-    return fetchApi('/users');
-  },
-  
-  getUser: async (id: string) => {
-    return fetchApi(`/users/${id}`);
-  },
-  
-  createUser: async (userData: any) => {
-    return fetchApi('/users', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-  },
-  
-  updateUser: async (id: string, userData: any) => {
-    return fetchApi(`/users/${id}`, {
+  getAllUsers: async () => fetchApi('/users'),
+  getUser: async (id: string) => fetchApi(`/users/${id}`),
+  createUser: async (userData: any) =>
+    fetchApi('/users', { method: 'POST', body: JSON.stringify(userData) }),
+  updateUser: async (id: string, userData: any) =>
+    fetchApi(`/users/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(userData),
-    });
-  },
-  
-  deleteUser: async (id: string) => {
-    return fetchApi(`/users/${id}`, {
-      method: 'DELETE',
-    });
-  },
+    }),
+  deleteUser: async (id: string) =>
+    fetchApi(`/users/${id}`, { method: 'DELETE' }),
 };

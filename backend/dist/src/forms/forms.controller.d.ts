@@ -2,6 +2,7 @@ import { FormsService } from './forms.service';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { CreateFormFieldDto } from './dto/create-form-field.dto';
+import { UpdateFormFieldDto } from './dto/update-form-field.dto';
 export declare class FormsController {
     private readonly formsService;
     constructor(formsService: FormsService);
@@ -16,6 +17,7 @@ export declare class FormsController {
             required: boolean;
             order: number;
             options: string[];
+            config: import("@prisma/client/runtime/library").JsonValue | null;
             formId: string;
         }[];
     } & {
@@ -58,6 +60,7 @@ export declare class FormsController {
             required: boolean;
             order: number;
             options: string[];
+            config: import("@prisma/client/runtime/library").JsonValue | null;
             formId: string;
         }[];
     } & {
@@ -81,6 +84,7 @@ export declare class FormsController {
             required: boolean;
             order: number;
             options: string[];
+            config: import("@prisma/client/runtime/library").JsonValue | null;
             formId: string;
         }[];
     } & {
@@ -106,9 +110,10 @@ export declare class FormsController {
         required: boolean;
         order: number;
         options: string[];
+        config: import("@prisma/client/runtime/library").JsonValue | null;
         formId: string;
     }>;
-    updateField(id: string, fieldId: string, req: any, updateFormFieldDto: CreateFormFieldDto): Promise<{
+    updateField(id: string, fieldId: string, req: any, updateFormFieldDto: UpdateFormFieldDto): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -118,6 +123,7 @@ export declare class FormsController {
         required: boolean;
         order: number;
         options: string[];
+        config: import("@prisma/client/runtime/library").JsonValue | null;
         formId: string;
     }>;
     removeField(id: string, fieldId: string, req: any): Promise<{
@@ -139,6 +145,7 @@ export declare class FormsController {
             required: boolean;
             order: number;
             options: string[];
+            config: import("@prisma/client/runtime/library").JsonValue | null;
             formId: string;
         }[];
     } & {

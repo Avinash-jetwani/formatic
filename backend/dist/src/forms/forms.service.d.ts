@@ -2,6 +2,7 @@ import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFormFieldDto } from './dto/create-form-field.dto';
+import { UpdateFormFieldDto } from './dto/update-form-field.dto';
 import { Role } from '@prisma/client';
 export declare class FormsService {
     private prisma;
@@ -17,6 +18,7 @@ export declare class FormsService {
             required: boolean;
             order: number;
             options: string[];
+            config: import("@prisma/client/runtime/library").JsonValue | null;
             formId: string;
         }[];
     } & {
@@ -59,6 +61,7 @@ export declare class FormsService {
             required: boolean;
             order: number;
             options: string[];
+            config: import("@prisma/client/runtime/library").JsonValue | null;
             formId: string;
         }[];
     } & {
@@ -87,6 +90,7 @@ export declare class FormsService {
             required: boolean;
             order: number;
             options: string[];
+            config: import("@prisma/client/runtime/library").JsonValue | null;
             formId: string;
         }[];
     } & {
@@ -110,6 +114,7 @@ export declare class FormsService {
             required: boolean;
             order: number;
             options: string[];
+            config: import("@prisma/client/runtime/library").JsonValue | null;
             formId: string;
         }[];
     } & {
@@ -135,9 +140,10 @@ export declare class FormsService {
         required: boolean;
         order: number;
         options: string[];
+        config: import("@prisma/client/runtime/library").JsonValue | null;
         formId: string;
     }>;
-    updateField(formId: string, fieldId: string, userId: string, userRole: Role, updateFormFieldDto: CreateFormFieldDto): Promise<{
+    updateField(formId: string, fieldId: string, userId: string, userRole: Role, updateFormFieldDto: UpdateFormFieldDto): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -147,6 +153,7 @@ export declare class FormsService {
         required: boolean;
         order: number;
         options: string[];
+        config: import("@prisma/client/runtime/library").JsonValue | null;
         formId: string;
     }>;
     removeField(formId: string, fieldId: string, userId: string, userRole: Role): Promise<{

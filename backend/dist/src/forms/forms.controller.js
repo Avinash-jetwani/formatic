@@ -19,6 +19,7 @@ const create_form_dto_1 = require("./dto/create-form.dto");
 const update_form_dto_1 = require("./dto/update-form.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const create_form_field_dto_1 = require("./dto/create-form-field.dto");
+const update_form_field_dto_1 = require("./dto/update-form-field.dto");
 let FormsController = class FormsController {
     constructor(formsService) {
         this.formsService = formsService;
@@ -115,7 +116,7 @@ __decorate([
     __param(2, (0, common_1.Request)()),
     __param(3, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, Object, create_form_field_dto_1.CreateFormFieldDto]),
+    __metadata("design:paramtypes", [String, String, Object, update_form_field_dto_1.UpdateFormFieldDto]),
     __metadata("design:returntype", void 0)
 ], FormsController.prototype, "updateField", null);
 __decorate([

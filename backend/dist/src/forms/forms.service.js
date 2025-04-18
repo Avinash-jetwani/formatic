@@ -134,22 +134,22 @@ let FormsService = class FormsService {
         await this.findOne(formId, userId, userRole);
         return this.prisma.formField.create({
             data: {
-                ...createFormFieldDto,
                 formId,
+                ...createFormFieldDto,
             },
         });
     }
     async updateField(formId, fieldId, userId, userRole, updateFormFieldDto) {
         await this.findOne(formId, userId, userRole);
-        const field = await this.prisma.formField.findUnique({
-            where: { id: fieldId },
-        });
+        const field = await this.prisma.formField.findUnique({ where: { id: fieldId } });
         if (!field || field.formId !== formId) {
-            throw new common_1.NotFoundException(`Field with ID ${fieldId} not found in form ${formId}`);
+            throw new common_1.NotFoundException(`Field ${fieldId} not found in form ${formId}`);
         }
         return this.prisma.formField.update({
             where: { id: fieldId },
-            data: updateFormFieldDto,
+            data: {
+                ...updateFormFieldDto,
+            },
         });
     }
     async removeField(formId, fieldId, userId, userRole) {

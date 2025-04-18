@@ -1,651 +1,572 @@
-// src/app/forms/[id]/page.tsx
+// src/app/(dashboard)/forms/[id]/page.tsx
 'use client';
 
-import React, { use, useEffect ,useState } from 'react';
+import React, { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { formsService, submissionsService } from '@/services/api';
+import {
+  formsService,
+  submissionsService,
+  FieldType,
+  CreateFormFieldDto,
+} from '@/services/api';
 import { AuthProvider } from '@/contexts/AuthContext';
+import FieldConfigPanel from '@/components/form-builder/FieldConfigPanel';
 
-// Create the content component
+interface EditingField {
+  id: string;
+  label: string;
+  type: FieldType;
+  placeholder?: string;
+  required: boolean;
+  options: string;
+  order: number;
+  config: Record<string, any>;
+}
+
 function FormDetailContent({ id }: { id: string }) {
-  const [form, setForm] = useState(null);
-  const [submissions, setSubmissions] = useState([]);
+  const router = useRouter();
+
+  const [form, setForm] = useState<any>(null);
+  const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddField, setShowAddField] = useState(false);
-  const [editingField, setEditingField] = useState(null);
-  const [newField, setNewField] = useState({
+  const [editingField, setEditingField] = useState<EditingField | null>(null);
+
+  const [newField, setNewField] = useState<CreateFormFieldDto>({
     label: '',
-    type: 'TEXT',
+    type: FieldType.TEXT,
     placeholder: '',
     required: false,
     options: '',
     order: 1,
+    config: {},
   });
 
-  const router = useRouter();
-
+  // fetch form & submissions
   useEffect(() => {
-    const fetchData = async () => {
+    async function fetchData() {
       try {
-        const [formRes, submissionsRes] = await Promise.all([
+        const [fRes, sRes] = await Promise.all([
           formsService.getForm(id),
           submissionsService.getFormSubmissions(id),
         ]);
-
-        if (formRes.data && !formRes.error) {
-          setForm(formRes.data);
-          
-          // Adjust order for new field
-          if (formRes.data.fields && formRes.data.fields.length > 0) {
+        if (fRes.data && !fRes.error) {
+          setForm(fRes.data);
+          if (fRes.data.fields?.length) {
             setNewField(prev => ({
               ...prev,
-              order: Math.max(...formRes.data.fields.map((f) => f.order || 0)) + 1
+              order: Math.max(...fRes.data.fields.map((f: any) => f.order)) + 1,
             }));
           }
         } else {
-          setError(formRes.error || 'Failed to fetch form details');
+          setError(fRes.error || 'Could not load form');
         }
-
-        if (submissionsRes.data && !submissionsRes.error) {
-          setSubmissions(submissionsRes.data);
+        if (sRes.data && !sRes.error) {
+          setSubmissions(sRes.data);
         }
-      } catch (err) {
-        setError('An error occurred while fetching data');
+      } catch {
+        setError('Fetch error');
       } finally {
         setLoading(false);
       }
-    };
-
+    }
     fetchData();
   }, [id]);
 
+  // toggle publish
   const handlePublishToggle = async () => {
     try {
-      const { data, error } = await formsService.updateForm(id, {
+      const { data } = await formsService.updateForm(id, {
         published: !form.published,
       });
-      
-      if (data && !error) {
-        setForm({ ...form, published: !form.published });
-      } else {
-        setError(error || 'Failed to update form');
-      }
-    } catch (err) {
-      setError('An error occurred');
+      if (data) setForm({ ...form, published: !form.published });
+    } catch {
+      setError('Update error');
     }
   };
 
-  const handleAddField = async (e) => {
+  // add new field
+  const handleAddField = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     try {
-      const fieldData = {
+      const payload = {
         ...newField,
-        options: newField.type === 'DROPDOWN' || newField.type === 'CHECKBOX' || newField.type === 'RADIO'
-          ? newField.options.split(',').map(opt => opt.trim())
-          : [],
+        options:
+          [FieldType.DROPDOWN, FieldType.CHECKBOX, FieldType.RADIO].includes(
+            newField.type
+          )
+            ? newField.options.split(',').map(o => o.trim())
+            : [],
       };
-      
-      const { data, error } = await formsService.addField(id, fieldData);
-      
-      if (data && !error) {
-        // Refresh form data
-        const { data: formData } = await formsService.getForm(id);
-        if (formData) {
-          setForm(formData);
-        }
-        
-        // Reset new field form
+      const { data } = await formsService.addField(id, payload);
+      if (data) {
+        const { data: refreshed } = await formsService.getForm(id);
+        if (refreshed) setForm(refreshed);
         setNewField({
           label: '',
-          type: 'TEXT',
+          type: FieldType.TEXT,
           placeholder: '',
           required: false,
           options: '',
-          order: formData.fields ? Math.max(...formData.fields.map((f) => f.order || 0)) + 1 : 1,
+          order: refreshed.fields.length + 1,
+          config: {},
         });
-        
         setShowAddField(false);
-      } else {
-        setError(error || 'Failed to add field');
       }
-    } catch (err) {
-      setError('An error occurred');
+    } catch {
+      setError('Add field error');
     }
   };
 
-  const handleDeleteForm = async () => {
-    if (confirm('Are you sure you want to delete this form? This action cannot be undone.')) {
-      try {
-        const { error } = await formsService.deleteForm(id);
-        
-        if (!error) {
-          router.push('/forms');
-        } else {
-          setError(error || 'Failed to delete form');
-        }
-      } catch (err) {
-        setError('An error occurred');
-      }
-    }
-  };
-
-  const prepareFieldForEditing = (field) => {
-    // Convert options array to comma-separated string for editing
-    const options = field.options && field.options.length 
-      ? field.options.join(', ') 
-      : '';
-    
+  // prepare edit
+  const prepareFieldForEditing = (field: any) => {
     setEditingField({
-      ...field,
-      options
+      id: field.id,
+      label: field.label,
+      type: field.type,
+      placeholder: field.placeholder || '',
+      required: field.required,
+      options: field.options?.join(', ') || '',
+      order: field.order,
+      config: field.config || {},
     });
   };
 
-  const handleEditFieldClick = (field) => {
-    prepareFieldForEditing(field);
-  };
-
-  const handleUpdateField = async (e) => {
+  // update field
+  const handleUpdateField = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-  
-    const fieldData = {
-      label:       editingField.label,
-      type:        editingField.type,
-      placeholder: editingField.placeholder || '',
-      required:    editingField.required,
-      order:       editingField.order,
-      options:     ['DROPDOWN', 'CHECKBOX', 'RADIO'].includes(editingField.type)
-                    ? editingField.options.split(',').map(o => o.trim())
-                    : [],
-    };
-  
+    if (!editingField) return;
     try {
-      const { data, error } = await formsService.updateField(id, editingField.id, fieldData);
-      if (error) {
-        setError(error);
-        return;
+      const payload = {
+        label: editingField.label,
+        type: editingField.type,
+        placeholder: editingField.placeholder,
+        required: editingField.required,
+        order: editingField.order,
+        options: [FieldType.DROPDOWN, FieldType.CHECKBOX, FieldType.RADIO].includes(
+          editingField.type
+        )
+          ? editingField.options.split(',').map(o => o.trim())
+          : [],
+        config: editingField.config,
+      };
+      const { error } = await formsService.updateField(
+        id,
+        editingField.id,
+        payload
+      );
+      if (!error) {
+        const { data: refreshed } = await formsService.getForm(id);
+        if (refreshed) setForm(refreshed);
+        setEditingField(null);
       }
-      // on success, re-fetch the form and clear the edit state
-      const { data: fresh } = await formsService.getForm(id);
-      if (fresh) setForm(fresh);
-      setEditingField(null);
-    } catch (err) {
-      console.error('UpdateField failed:', err);
-      setError('Failed to update field');
+    } catch {
+      setError('Update field error');
     }
   };
 
-// DELETE handler
-const handleDeleteField = async (fieldId) => {
-  if (!confirm('This is permanent! Are you sure?')) return;
-
-  try {
-    const { data, error } = await formsService.deleteField(id, fieldId);
-    if (error) {
-      setError(error);
-      return;
+  // delete field
+  const handleDeleteField = async (fieldId: string) => {
+    if (!confirm('Delete this field?')) return;
+    try {
+      const { error } = await formsService.deleteField(id, fieldId);
+      if (!error) {
+        const { data: refreshed } = await formsService.getForm(id);
+        if (refreshed) setForm(refreshed);
+      }
+    } catch {
+      setError('Delete field error');
     }
-    // on success, re-fetch the form so the list updates
-    const { data: fresh } = await formsService.getForm(id);
-    if (fresh) setForm(fresh);
-  } catch (err) {
-    console.error('DeleteField failed:', err);
-    setError('Failed to delete field');
-  }
-};
+  };
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="animate-spin h-12 w-12 border-2 border-blue-600 rounded-full border-t-transparent" />
       </div>
     );
-  }
 
-  if (error) {
+  if (error)
     return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+      <div className="max-w-4xl mx-auto p-6 bg-red-50 text-red-700 rounded">
         <p>{error}</p>
         <button
           onClick={() => router.push('/forms')}
-          className="mt-2 text-sm text-red-700 underline"
+          className="mt-4 underline"
         >
-          Back to Forms
+          Back to forms
         </button>
       </div>
     );
-  }
 
-  if (!form) {
+  if (!form)
     return (
-      <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-md">
-        <p>Form not found</p>
+      <div className="max-w-4xl mx-auto p-6 bg-yellow-50 text-yellow-700 rounded">
+        <p>Form not found.</p>
         <button
           onClick={() => router.push('/forms')}
-          className="mt-2 text-sm text-yellow-700 underline"
+          className="mt-4 underline"
         >
-          Back to Forms
+          Back to forms
         </button>
       </div>
     );
-  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center">
-          <button
-            onClick={() => router.push('/forms')}
-            className="mr-4 text-gray-600 hover:text-gray-900"
-          >
-            ← Back
-          </button>
-          <h1 className="text-2xl font-bold">{form.title}</h1>
+    <div className="container mx-auto max-w-4xl py-8 space-y-8 px-4">
+      {/* HEADER CARD */}
+      <div className="bg-white shadow-lg rounded-lg border-l-4 border-blue-600 p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="flex-1 space-y-3">
+          <h1 className="text-3xl font-extrabold text-blue-600">
+            {form.title}
+          </h1>
+          {form.description && (
+            <p className="text-gray-700">{form.description}</p>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-500">
+              Public URL
+            </label>
+            <input
+              type="text"
+              readOnly
+              value={`${window.location.origin}/forms/public/${form.clientId}/${form.slug}`}
+              onClick={e => (e.target as HTMLInputElement).select()}
+              className="mt-1 w-full font-mono text-sm px-3 py-2 bg-gray-50 border border-gray-300 rounded"
+            />
+          </div>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <button
+            onClick={() => router.push(`/forms/${id}/edit`)}
+            className="px-4 py-2 border border-blue-600 text-blue-600 rounded hover:bg-blue-50"
+          >
+            Edit Details
+          </button>
           <button
             onClick={handlePublishToggle}
-            className={`px-4 py-2 rounded-md ${
+            className={`px-4 py-2 rounded text-white ${
               form.published
-                ? 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800'
-                : 'bg-green-100 hover:bg-green-200 text-green-800'
+                ? 'bg-yellow-500 hover:bg-yellow-600'
+                : 'bg-green-600 hover:bg-green-700'
             }`}
           >
             {form.published ? 'Unpublish' : 'Publish'}
           </button>
-          <button
-            onClick={handleDeleteForm}
-            className="bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded-md"
-          >
-            Delete
-          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow mb-6">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Form Details</h2>
-                <button
-                  onClick={() => router.push(`/forms/${id}/edit`)}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  Edit Details
-                </button>
-              </div>
-              
-              <div className="mb-4">
-                <p className="text-sm text-gray-500">Description</p>
-                <p className="text-gray-700">{form.description || 'No description'}</p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-gray-500">Status</p>
-                  <p className="flex items-center">
-                    <span
-                      className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                        form.published ? 'bg-green-500' : 'bg-yellow-500'
-                      }`}
-                    ></span>
-                    <span>{form.published ? 'Published' : 'Draft'}</span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Submissions</p>
-                  <p>{submissions.length}</p>
-                </div>
-              </div>
-              
+      {/* FIELDS CARD */}
+      <div className="bg-white shadow-lg rounded-lg p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-semibold text-gray-800">Fields</h2>
+          <button
+            onClick={() => {
+              setEditingField(null);
+              setShowAddField(prev => !prev);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            + Add Field
+          </button>
+        </div>
+
+        {/* ADD FIELD FORM */}
+        {showAddField && !editingField && (
+          <form
+            onSubmit={handleAddField}
+            className="space-y-4 mb-6 pb-6 border-b border-gray-200"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Public URL</p>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    readOnly
-                    value={`${window.location.origin}/forms/public/${form.clientId}/${form.slug}`}
-                    className="w-full p-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-black"
-                    onClick={(e) => e.target.select()}
-                  />
-                </div>
+                <label className="block mb-1 text-sm font-medium text-gray-700">
+                  Label
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newField.label}
+                  onChange={e =>
+                    setNewField({ ...newField, label: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded p-2 text-black"
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700">
+                  Type
+                </label>
+                <select
+                  value={newField.type}
+                  onChange={e =>
+                    setNewField(prev => ({
+                      ...prev,
+                      type: e.target.value as FieldType,
+                    }))
+                  }
+                  className="w-full border border-gray-300 rounded p-2 text-black"
+                >
+                  {Object.values(FieldType).map(ft => (
+                    <option key={ft} value={ft}>
+                      {ft}
+                    </option>
+                  ))}
+                </select>
+                <FieldConfigPanel
+                  type={newField.type}
+                  config={newField.config}
+                  onChange={cfg =>
+                    setNewField(prev => ({ ...prev, config: cfg }))
+                  }
+                />
               </div>
             </div>
-          </div>
 
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Form Fields</h2>
-                <button
-                  onClick={() => {
-                    setEditingField(null);
-                    setShowAddField(!showAddField);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm"
+            <div>
+              <label className="block mb-1 text-sm font-medium text-gray-700">
+                Placeholder
+              </label>
+              <input
+                type="text"
+                value={newField.placeholder}
+                onChange={e =>
+                  setNewField({ ...newField, placeholder: e.target.value })
+                }
+                className="w-full border border-gray-300 rounded p-2 text-black"
+              />
+            </div>
+
+            {(newField.type === FieldType.DROPDOWN ||
+              newField.type === FieldType.CHECKBOX ||
+              newField.type === FieldType.RADIO) && (
+              <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700">
+                  Options (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={newField.options}
+                  onChange={e =>
+                    setNewField({ ...newField, options: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded p-2 text-black"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={newField.required}
+                  onChange={e =>
+                    setNewField({ ...newField, required: e.target.checked })
+                  }
+                  className="mr-2"
+                />
+                Required
+              </label>
+              <button
+                type="submit"
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                Save Field
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* EDIT FIELD FORM */}
+        {editingField && (
+          <form
+            onSubmit={handleUpdateField}
+            className="space-y-4 mb-6 pb-6 border-b border-gray-200"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700">
+                  Label
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editingField.label}
+                  onChange={e =>
+                    setEditingField({ ...editingField, label: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded p-2 text-black"
+                />
+              </div>
+              <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700">
+                  Type
+                </label>
+                <select
+                  value={editingField.type}
+                  onChange={e =>
+                    setEditingField(prev => ({
+                      ...prev!,
+                      type: e.target.value as FieldType,
+                    }))
+                  }
+                  className="w-full border border-gray-300 rounded p-2 text-black"
                 >
-                  Add Field
+                  {Object.values(FieldType).map(ft => (
+                    <option key={ft} value={ft}>
+                      {ft}
+                    </option>
+                  ))}
+                </select>
+                <FieldConfigPanel
+                  type={editingField.type}
+                  config={editingField.config}
+                  onChange={cfg =>
+                    setEditingField({ ...editingField, config: cfg })
+                  }
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block mb-1 text-sm font-medium text-gray-700">
+                Placeholder
+              </label>
+              <input
+                type="text"
+                value={editingField.placeholder}
+                onChange={e =>
+                  setEditingField({
+                    ...editingField,
+                    placeholder: e.target.value,
+                  })
+                }
+                className="w-full border border-gray-300 rounded p-2 text-black"
+              />
+            </div>
+
+            {(editingField.type === FieldType.DROPDOWN ||
+              editingField.type === FieldType.CHECKBOX ||
+              editingField.type === FieldType.RADIO) && (
+              <div>
+                <label className="block mb-1 text-sm font-medium text-gray-700">
+                  Options (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={editingField.options}
+                  onChange={e =>
+                    setEditingField({
+                      ...editingField,
+                      options: e.target.value,
+                    })
+                  }
+                  className="w-full border border-gray-300 rounded p-2 text-black"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={editingField.required}
+                  onChange={e =>
+                    setEditingField({
+                      ...editingField,
+                      required: e.target.checked,
+                    })
+                  }
+                  className="mr-2"
+                />
+                Required
+              </label>
+              <button
+                type="submit"
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              >
+                Update Field
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingField(null)}
+                className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* EXISTING FIELDS */}
+        <div className="space-y-2">
+          {form.fields.map((field: any) => (
+            <div
+              key={field.id}
+              className="flex justify-between items-center p-4 border border-gray-200 rounded hover:bg-gray-50"
+            >
+              <div>
+                <strong className="text-gray-800">{field.label}</strong>{' '}
+                <span className="italic text-gray-500">— {field.type}</span>
+              </div>
+              <div className="space-x-4">
+                <button
+                  onClick={() => prepareFieldForEditing(field)}
+                  className="text-blue-600 hover:underline"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteField(field.id)}
+                  className="text-red-600 hover:underline"
+                >
+                  Delete
                 </button>
               </div>
-
-              {showAddField && !editingField && (
-                <div className="mb-6 bg-gray-50 p-4 rounded-md">
-                  <h3 className="text-lg font-medium mb-3">Add New Field</h3>
-                  <form onSubmit={handleAddField}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Label *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={newField.label}
-                          onChange={(e) => setNewField({ ...newField, label: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-black"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Type *
-                        </label>
-                        <select
-                          value={newField.type}
-                          onChange={(e) => setNewField({ ...newField, type: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-black"
-                        >
-                          <option value="TEXT">Text</option>
-                          <option value="DROPDOWN">Dropdown</option>
-                          <option value="CHECKBOX">Checkbox</option>
-                          <option value="RADIO">Radio</option>
-                          <option value="FILE">File Upload</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Placeholder
-                      </label>
-                      <input
-                        type="text"
-                        value={newField.placeholder}
-                        onChange={(e) => setNewField({ ...newField, placeholder: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-black"
-                      />
-                    </div>
-
-                    {(newField.type === 'DROPDOWN' || newField.type === 'CHECKBOX' || newField.type === 'RADIO') && (
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Options (comma separated) *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={newField.options}
-                          onChange={(e) => setNewField({ ...newField, options: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-black"
-                          placeholder="Option 1, Option 2, Option 3"
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex items-center mb-4">
-                      <input
-                        type="checkbox"
-                        id="required"
-                        checked={newField.required}
-                        onChange={(e) => setNewField({ ...newField, required: e.target.checked })}
-                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                      />
-                      <label htmlFor="required" className="ml-2 text-sm text-gray-700">
-                        Required Field
-                      </label>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setShowAddField(false)}
-                        className="mr-2 bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded-md text-sm"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm"
-                      >
-                        Add Field
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {editingField && (
-                <div className="mb-6 bg-gray-50 p-4 rounded-md">
-                  <h3 className="text-lg font-medium mb-3">Edit Field</h3>
-                  <form onSubmit={handleUpdateField}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Label *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={editingField.label}
-                          onChange={(e) => setEditingField({ ...editingField, label: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-black"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Type *
-                        </label>
-                        <select
-                          value={editingField.type}
-                          onChange={(e) => setEditingField({ ...editingField, type: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-black"
-                        >
-                          <option value="TEXT">Text</option>
-                          <option value="DROPDOWN">Dropdown</option>
-                          <option value="CHECKBOX">Checkbox</option>
-                          <option value="RADIO">Radio</option>
-                          <option value="FILE">File Upload</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Placeholder
-                      </label>
-                      <input
-                        type="text"
-                        value={editingField.placeholder || ''}
-                        onChange={(e) => setEditingField({ ...editingField, placeholder: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-black"
-                      />
-                    </div>
-
-                    {(editingField.type === 'DROPDOWN' || editingField.type === 'CHECKBOX' || editingField.type === 'RADIO') && (
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Options (comma separated) *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={editingField.options}
-                          onChange={(e) => setEditingField({ ...editingField, options: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-black"
-                          placeholder="Option 1, Option 2, Option 3"
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex items-center mb-4">
-                      <input
-                        type="checkbox"
-                        id="edit-required"
-                        checked={editingField.required}
-                        onChange={(e) => setEditingField({ ...editingField, required: e.target.checked })}
-                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                      />
-                      <label htmlFor="edit-required" className="ml-2 text-sm text-gray-700">
-                        Required Field
-                      </label>
-                    </div>
-
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setEditingField(null)}
-                        className="mr-2 bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-1 rounded-md text-sm"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm"
-                      >
-                        Update Field
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {form.fields && form.fields.length > 0 ? (
-                <div className="space-y-4">
-                  {form.fields.sort((a, b) => a.order - b.order).map((field) => (
-                    <div key={field.id} className="border rounded-md p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="flex items-center">
-                            <h3 className="font-medium">{field.label}</h3>
-                            {field.required && (
-                              <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">
-                                Required
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-500">
-                            Type: {field.type.charAt(0) + field.type.slice(1).toLowerCase()}
-                          </p>
-                          {field.placeholder && (
-                            <p className="text-sm text-gray-500">
-                              Placeholder: {field.placeholder}
-                            </p>
-                          )}
-                          {(field.type === 'DROPDOWN' || field.type === 'CHECKBOX' || field.type === 'RADIO') && field.options && field.options.length > 0 && (
-                            <div className="mt-2">
-                              <p className="text-sm text-gray-500">Options:</p>
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {field.options.map((option, index) => (
-                                  <span
-                                    key={index}
-                                    className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded"
-                                  >
-                                    {option}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex">
-                          <button
-                            onClick={() => handleEditFieldClick(field)}
-                            className="text-blue-600 hover:text-blue-800 text-sm mr-2"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteField(field.id)}
-                            className="text-red-600 hover:text-red-800 text-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No fields added yet. Add fields to your form.</p>
-                </div>
-              )}
             </div>
-          </div>
+          ))}
         </div>
+      </div>
 
-        <div>
-          <div className="bg-white rounded-lg shadow">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Recent Submissions</h2>
-              
-              {submissions.length > 0 ? (
-                <div className="space-y-4">
-                  {submissions.slice(0, 5).map((submission) => (
-                    <div key={submission.id} className="border-b pb-3">
-                      <p className="text-sm text-gray-500">
-                        {new Date(submission.createdAt).toLocaleString()}
-                      </p>
-                      <button
-                        onClick={() => router.push(`/submissions/${submission.id}`)}
-                        className="text-blue-600 hover:text-blue-800 text-sm"
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  ))}
-                  
-                  {submissions.length > 5 && (
-                    <div className="text-center mt-2">
-                      <button
-                        onClick={() => router.push(`/submissions/form/${id}`)}
-                        className="text-blue-600 hover:text-blue-800 text-sm"
-                      >
-                        View All {submissions.length} Submissions
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No submissions yet.</p>
-                </div>
-              )}
+      {/* SUBMISSIONS CARD */}
+      <div className="bg-white shadow-lg rounded-lg p-6">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+          Recent Submissions
+        </h2>
+        {submissions.length > 0 ? (
+          submissions.slice(0, 5).map(sub => (
+            <div
+              key={sub.id}
+              className="flex justify-between items-center py-2 border-b last:border-none"
+            >
+              <span className="text-sm text-gray-600">
+                {new Date(sub.createdAt).toLocaleString()}
+              </span>
+              <button
+                onClick={() => router.push(`/submissions/${sub.id}`)}
+                className="text-blue-600 hover:underline"
+              >
+                View
+              </button>
             </div>
-          </div>
-        </div>
+          ))
+        ) : (
+          <p className="text-gray-500">No submissions yet.</p>
+        )}
       </div>
     </div>
   );
 }
 
-// The main page component that uses params correctly
 export default function FormDetailPage({
   params,
 }: {
-  // tell TS it’s a promise now
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }) {
-  // unwrap the promise
-  const unwrappedParams = use(params)
-  const { id } = unwrappedParams
-
+  const { id } = use(params);
   return (
     <AuthProvider>
       <FormDetailContent id={id} />
     </AuthProvider>
-  )
+  );
 }
