@@ -3,6 +3,7 @@
 import React, { useState, useEffect, FormEvent } from 'react'
 import { useParams } from 'next/navigation'
 import { formsService, submissionsService, FieldType } from '@/services/api'
+import Link from 'next/link';
 
 export default function PublicFormPage() {
   const { clientId, slug } = useParams() as {
@@ -131,13 +132,40 @@ export default function PublicFormPage() {
       </div>
     )
 
-  if (submitted)
-    return (
-      <div className="max-w-md mx-auto p-6 bg-green-50 text-green-700 rounded">
-        <h2 className="font-semibold mb-2">Thank you!</h2>
-        <p>Your response has been submitted.</p>
-      </div>
-    )
+    if (submitted)
+      return (
+        <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+          <div className="max-w-xl mx-auto bg-white p-8 rounded-lg shadow-md">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                <svg className="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-gray-800 mb-3">Thank you!</h1>
+              <p className="text-gray-600 mb-6">
+                Your response has been successfully submitted. We appreciate your feedback.
+              </p>
+              
+              <button
+                onClick={() => {
+                  // Reset the form for a new submission
+                  const init: Record<string, any> = {}
+                  form.fields.forEach((f: any) => {
+                    if (f.type === FieldType.CHECKBOX) init[f.label] = []
+                    else init[f.label] = ''
+                  })
+                  setFormValues(init)
+                  setSubmitted(false)
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Submit Another Response
+              </button>
+            </div>
+          </div>
+        </div>
+      );
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -413,33 +441,48 @@ export default function PublicFormPage() {
 
                 {/* RATING */}
                 {field.type === FieldType.RATING && (
-                  <div className="flex space-x-1">
-                    {Array.from({ length: field.config?.maxStars || 5 }).map((_, i) => (
-                      <label key={i} className="cursor-pointer">
-                        <input
-                          type="radio"
-                          name={field.label}
-                          value={i + 1}
-                          checked={Number(formValues[field.label]) === i + 1}
-                          onChange={handleInputChange}
-                          className="hidden"
-                        />
-                        <svg
-                          className={`w-8 h-8 ${
-                            Number(formValues[field.label]) >= i + 1
-                              ? 'text-yellow-400'
-                              : 'text-gray-300'
-                          }`}
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                        </svg>
-                      </label>
-                    ))}
-                    <span className="ml-2 text-gray-500">
-                      {formValues[field.label] ? `${formValues[field.label]} out of ${field.config?.maxStars || 5}` : ''}
+                  <div className="flex flex-col">
+                    <div className="flex space-x-1">
+                      {Array.from({ length: field.config?.maxStars || 5 }).map((_, i) => (
+                        <label key={i} className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name={field.label}
+                            value={i + 1}
+                            checked={Number(formValues[field.label]) === i + 1}
+                            onChange={(e) => {
+                              // Explicitly set the number value to ensure proper comparison
+                              setFormValues(prev => ({
+                                ...prev,
+                                [field.label]: Number(e.target.value)
+                              }));
+                            }}
+                            className="hidden"
+                          />
+                          <svg
+                            className={`w-8 h-8 ${
+                              Number(formValues[field.label]) >= i + 1
+                                ? 'text-yellow-400'
+                                : 'text-gray-300'
+                            }`}
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                            onClick={() => {
+                              // Add a direct click handler as a backup
+                              setFormValues(prev => ({
+                                ...prev,
+                                [field.label]: i + 1
+                              }));
+                            }}
+                          >
+                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                          </svg>
+                        </label>
+                      ))}
+                    </div>
+                    <span className="mt-2 text-gray-500">
+                      {formValues[field.label] ? `${formValues[field.label]} out of ${field.config?.maxStars || 5}` : 'Please select a rating'}
                     </span>
                   </div>
                 )}

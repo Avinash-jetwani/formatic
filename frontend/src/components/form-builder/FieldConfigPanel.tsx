@@ -44,46 +44,47 @@ export default function FieldConfigPanel({ type, config, onChange }: Props) {
         </div>
       );
 
-    case FieldType.NUMBER:
-      return (
-        <div className="mb-4 p-3 border border-gray-100 rounded-md">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">Number Field Configuration</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className={labelClass}>Min</label>
-              <input
-                type="number"
-                value={config.min ?? ''}
-                onChange={e => update('min', parseNumber(e.target.value))}
-                className={smallInputClass}
-                placeholder="No min"
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Max</label>
-              <input
-                type="number"
-                value={config.max ?? ''}
-                onChange={e => update('max', parseNumber(e.target.value))}
-                className={smallInputClass}
-                placeholder="No max"
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Step</label>
-              <input
-                type="number"
-                value={config.step ?? ''}
-                onChange={e => update('step', parseNumber(e.target.value))}
-                className={smallInputClass}
-                placeholder="1"
-                min="0.0001"
-                step="0.0001"
-              />
+      case FieldType.NUMBER:
+        return (
+          <div className="mb-4 p-3 border border-gray-100 rounded-md">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Number Field Configuration</h3>
+            {/* Make the grid more responsive to prevent overflow */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className={labelClass}>Min</label>
+                <input
+                  type="number"
+                  value={config.min ?? ''}
+                  onChange={e => update('min', parseNumber(e.target.value))}
+                  className={smallInputClass}
+                  placeholder="No min"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Max</label>
+                <input
+                  type="number"
+                  value={config.max ?? ''}
+                  onChange={e => update('max', parseNumber(e.target.value))}
+                  className={smallInputClass}
+                  placeholder="No max"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Step</label>
+                <input
+                  type="number"
+                  value={config.step ?? ''}
+                  onChange={e => update('step', parseNumber(e.target.value))}
+                  className={smallInputClass}
+                  placeholder="1"
+                  min="0.0001"
+                  step="0.0001"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      );
+        );
 
     case FieldType.DATE:
     case FieldType.TIME:
