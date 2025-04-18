@@ -44,6 +44,7 @@ let FormsService = class FormsService {
                     _count: {
                         select: {
                             submissions: true,
+                            fields: true,
                         },
                     },
                 },
@@ -57,6 +58,7 @@ let FormsService = class FormsService {
                 _count: {
                     select: {
                         submissions: true,
+                        fields: true,
                     },
                 },
             },

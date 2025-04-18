@@ -41,6 +41,7 @@ export class FormsService {
           _count: {
             select: {
               submissions: true,
+              fields: true,
             },
           },
         },
@@ -56,6 +57,7 @@ export class FormsService {
         _count: {
           select: {
             submissions: true,
+            fields: true,
           },
         },
       },

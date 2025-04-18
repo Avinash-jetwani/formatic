@@ -32,6 +32,7 @@ export declare class FormsController {
     }>;
     findAll(req: any): Promise<({
         _count: {
+            fields: number;
             submissions: number;
         };
     } & {

@@ -33,6 +33,7 @@ export declare class FormsService {
     }>;
     findAll(userId: string, userRole: Role): Promise<({
         _count: {
+            fields: number;
             submissions: number;
         };
     } & {
