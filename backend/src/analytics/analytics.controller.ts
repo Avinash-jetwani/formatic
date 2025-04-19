@@ -88,8 +88,6 @@ export class AnalyticsController {
   }
 
   @Get('export')
-  @Header('Content-Type', 'text/csv')
-  @Header('Content-Disposition', 'attachment; filename=dashboard-data.csv')
   async exportDashboardData(
     @Request() req,
     @Query('role') role: string,
@@ -104,9 +102,15 @@ export class AnalyticsController {
       (req.user.role === Role.CLIENT && req.user.id === userId)
     ) {
       const csvData = await this.analytics.exportDashboardData(role, userId, start, end);
-      res.send(csvData);
+      
+      // Set headers for CSV download
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=dashboard-data.csv');
+      
+      // Send CSV data directly without JSON parsing
+      return res.send(csvData);
     } else {
-      res.status(403).json({ error: 'Unauthorized' });
+      return res.status(403).json({ error: 'Unauthorized' });
     }
   }
-}
+  }

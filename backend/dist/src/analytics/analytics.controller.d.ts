@@ -30,5 +30,5 @@ export declare class AnalyticsController {
         error: string;
         status: number;
     }>;
-    exportDashboardData(req: any, role: string, userId: string, start: string, end: string, res: Response): Promise<void>;
+    exportDashboardData(req: any, role: string, userId: string, start: string, end: string, res: Response): Promise<Response<any, Record<string, any>>>;
 }

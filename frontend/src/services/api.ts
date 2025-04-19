@@ -191,14 +191,40 @@ export const analyticsService = {
   },
   
   // Export dashboard data as CSV
-  exportDashboardData: (role: string, userId: string, start: string, end: string) => {
-    return fetchApi(
-      `/analytics/export?role=${role}&userId=${userId}&start=${start}&end=${end}`,
-      { 
-        headers: {
-          'Accept': 'text/csv'
-        } 
+// Export dashboard data as CSV
+exportDashboardData: async (role: string, userId: string, start: string, end: string) => {
+  try {
+    const token = localStorage.getItem('token') || '';
+    
+    const response = await fetch(`${API_URL}/analytics/export?role=${role}&userId=${userId}&start=${start}&end=${end}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'text/csv'
       }
-    );
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to export data');
+    }
+    
+    // Get the CSV text directly
+    const csvText = await response.text();
+    
+    // Create a blob and download
+    const blob = new Blob([csvText], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dashboard-data-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
+    return { data: 'Export successful' };
+  } catch (error) {
+    console.error('Export error:', error);
+    return { error: 'Failed to export data' };
   }
+}
 };

@@ -72,10 +72,12 @@ let AnalyticsController = class AnalyticsController {
         if (req.user.role === client_1.Role.SUPER_ADMIN ||
             (req.user.role === client_1.Role.CLIENT && req.user.id === userId)) {
             const csvData = await this.analytics.exportDashboardData(role, userId, start, end);
-            res.send(csvData);
+            res.setHeader('Content-Type', 'text/csv');
+            res.setHeader('Content-Disposition', 'attachment; filename=dashboard-data.csv');
+            return res.send(csvData);
         }
         else {
-            res.status(403).json({ error: 'Unauthorized' });
+            return res.status(403).json({ error: 'Unauthorized' });
         }
     }
 };
@@ -132,8 +134,6 @@ __decorate([
 ], AnalyticsController.prototype, "getConversionTrends", null);
 __decorate([
     (0, common_1.Get)('export'),
-    (0, common_1.Header)('Content-Type', 'text/csv'),
-    (0, common_1.Header)('Content-Disposition', 'attachment; filename=dashboard-data.csv'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('role')),
     __param(2, (0, common_1.Query)('userId')),
