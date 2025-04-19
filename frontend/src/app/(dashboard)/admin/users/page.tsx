@@ -1,283 +1,337 @@
 // src/app/(dashboard)/admin/users/page.tsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { usersService } from '@/services/api';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { usersService } from '@/services/api';
+import {
+  SearchIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  Trash2Icon,
+  Edit2Icon,
+  DownloadIcon,
+} from 'lucide-react';
+
+interface User {
+  id: string;
+  name?: string;
+  email: string;
+  role: 'SUPER_ADMIN' | 'CLIENT';
+  createdAt: string;
+}
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user: me } = useAuth();
   const router = useRouter();
 
-  // State for creating a new user
-  const [showAddUserForm, setShowAddUserForm] = useState(false);
-  const [newUser, setNewUser] = useState({
-    email: '',
-    password: '',
-    name: '',
-    role: 'CLIENT',
-  });
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
+
+  // search/filter/sort/pagination state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterRole, setFilterRole] = useState<'ALL' | 'CLIENT' | 'SUPER_ADMIN'>('ALL');
+  const [sortBy, setSortBy] = useState<'name' | 'email' | 'role' | 'createdAt'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  // bulk selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Redirect if not admin
     if (!isAdmin) {
       router.push('/dashboard');
       return;
     }
-
-    const fetchUsers = async () => {
+    (async () => {
+      setLoading(true);
       try {
         const { data, error } = await usersService.getAllUsers();
-        if (data && !error) {
-          setUsers(data);
-        } else {
-          setError(error || 'Failed to fetch users');
-        }
-      } catch (err) {
-        setError('An error occurred while fetching users');
+        if (data && !error) setUsers(data);
+        else setError(error || 'Failed to load users');
+      } catch {
+        setError('Network error');
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchUsers();
+    })();
   }, [isAdmin, router]);
 
-  const handleAddUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      const { data, error } = await usersService.createUser(newUser);
-      if (data && !error) {
-        setUsers([...users, data]);
-        setShowAddUserForm(false);
-        setNewUser({
-          email: '',
-          password: '',
-          name: '',
-          role: 'CLIENT',
-        });
-      } else {
-        setError(error || 'Failed to create user');
-      }
-    } catch (err) {
-      setError('An error occurred');
-    } finally {
-      setLoading(false);
+  // derived filtered & sorted
+  const filtered = useMemo(() => {
+    let arr = users;
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      arr = arr.filter(u =>
+        u.name?.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q)
+      );
     }
+    if (filterRole !== 'ALL') {
+      arr = arr.filter(u => u.role === filterRole);
+    }
+    arr = arr.slice().sort((a, b) => {
+      let va = a[sortBy] || '';
+      let vb = b[sortBy] || '';
+      if (sortBy === 'createdAt') {
+        va = new Date(a.createdAt).getTime();
+        vb = new Date(b.createdAt).getTime();
+      }
+      if (va < vb) return sortOrder === 'asc' ? -1 : 1;
+      if (va > vb) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [users, searchTerm, filterRole, sortBy, sortOrder]);
+
+  const pageCount = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const toggleSort = (field: typeof sortBy) => {
+    if (sortBy === field) setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
+    else { setSortBy(field); setSortOrder('asc'); }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    // Don't allow deleting self
-    if (userId === user?.id) {
-      alert('You cannot delete your own account.');
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const s = new Set(prev);
+      s.has(id) ? s.delete(id) : s.add(id);
+      return s;
+    });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (id === me?.id) {
+      alert("You can't delete yourself.");
       return;
     }
-
-    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      try {
-        const { error } = await usersService.deleteUser(userId);
-        if (!error) {
-          setUsers(users.filter(u => u.id !== userId));
-        } else {
-          setError(error || 'Failed to delete user');
-        }
-      } catch (err) {
-        setError('An error occurred');
-      }
+    if (!confirm('Delete this user?')) return;
+    try {
+      const { error } = await usersService.deleteUser(id);
+      if (error) throw new Error(error);
+      setUsers(u => u.filter(x => x.id !== id));
+      setSelectedIds(s => { s.delete(id); return new Set(s); });
+      alert('User deleted');
+    } catch (e: any) {
+      alert(`Error: ${e.message}`);
     }
   };
 
-  if (!isAdmin) {
-    return null; // Will redirect in useEffect
-  }
+  const handleBulkDelete = async () => {
+    if (selectedIds.has(me!.id)) {
+      alert("You can't delete yourself.");
+      return;
+    }
+    if (!confirm(`Delete ${selectedIds.size} users?`)) return;
+    for (let id of selectedIds) {
+      await usersService.deleteUser(id);
+    }
+    setUsers(u => u.filter(x => !selectedIds.has(x.id)));
+    setSelectedIds(new Set());
+    alert('Users deleted');
+  };
 
-  if (loading && users.length === 0) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
+  const handleExport = () => {
+    const rows = [
+      ['Name','Email','Role','Created'],
+      ...filtered.map(u => [
+        u.name||'',
+        u.email,
+        u.role,
+        new Date(u.createdAt).toISOString().slice(0,10),
+      ])
+    ];
+    const csv = rows.map(r=>r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'users.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (!isAdmin) return null;
+  if (loading) return (
+    <div className="flex justify-center items-center h-64">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+    </div>
+  );
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 p-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl font-bold">User Management</h1>
-        <button
-          onClick={() => setShowAddUserForm(!showAddUserForm)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-        >
-          Add User
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => router.push('/dashboard/admin/users/create')}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
+          >
+            <Edit2Icon className="w-5 h-5 mr-1" /> Add User
+          </button>
+          <button
+            onClick={handleExport}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded-md flex items-center"
+          >
+            <DownloadIcon className="w-4 h-4 mr-1" /> Export CSV
+          </button>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md flex items-center"
+            >
+              <Trash2Icon className="w-4 h-4 mr-1" /> Delete {selectedIds.size}
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 p-3 rounded-md">
-          {error}
-        </div>
+        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-md">{error}</div>
       )}
 
-      {showAddUserForm && (
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Add New User</h2>
-            <form onSubmit={handleAddUser}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={newUser.email}
-                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Password *
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={newUser.password}
-                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="relative">
+          <SearchIcon className="absolute top-2 left-2 w-4 h-4 text-gray-400" />
+          <input
+            type="search"
+            placeholder="Search by name or email..."
+            value={searchTerm}
+            onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+            className="pl-8 pr-3 py-2 border rounded-md"
+          />
+        </div>
+        <select
+          value={filterRole}
+          onChange={e => { setFilterRole(e.target.value as any); setCurrentPage(1); }}
+          className="px-3 py-2 border rounded-md"
+        >
+          <option value="ALL">All Roles</option>
+          <option value="CLIENT">Client</option>
+          <option value="SUPER_ADMIN">Super Admin</option>
+        </select>
+      </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Name
-                  </label>
+      {/* Users Table */}
+      <div className="overflow-x-auto bg-white rounded-lg shadow">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-2">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.size === paginated.length && paginated.length>0}
+                  onChange={e => {
+                    if (e.target.checked) paginated.forEach(u => selectedIds.add(u.id));
+                    else setSelectedIds(new Set());
+                    setSelectedIds(new Set(selectedIds));
+                  }}
+                />
+              </th>
+              {['name','email','role','createdAt'].map(field => (
+                <th
+                  key={field}
+                  onClick={() => toggleSort(field as any)}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                >
+                  <div className="flex items-center gap-1">
+                    {field === 'name' ? 'Name'
+                      : field === 'email' ? 'Email'
+                      : field === 'role' ? 'Role'
+                      : 'Created'}
+                    {sortBy === field &&
+                      (sortOrder==='asc'
+                        ? <ChevronUpIcon className="w-3 h-3"/>
+                        : <ChevronDownIcon className="w-3 h-3"/>
+                      )
+                    }
+                  </div>
+                </th>
+              ))}
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {paginated.map(u => (
+              <tr key={u.id} className="hover:bg-gray-50">
+                <td className="px-4 py-2">
                   <input
-                    type="text"
-                    value={newUser.name}
-                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    type="checkbox"
+                    checked={selectedIds.has(u.id)}
+                    onChange={() => toggleSelect(u.id)}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Role *
-                  </label>
-                  <select
-                    required
-                    value={newUser.role}
-                    onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  {u.name || '—'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {u.email}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    u.role==='SUPER_ADMIN'
+                      ? 'bg-purple-100 text-purple-800'
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {u.role === 'SUPER_ADMIN' ? 'Admin' : 'Client'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {new Date(u.createdAt).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm flex gap-4">
+                  <button
+                    onClick={() => router.push(`/dashboard/admin/users/${u.id}/edit`)}
+                    className="text-blue-600 hover:text-blue-900"
                   >
-                    <option value="CLIENT">Client</option>
-                    <option value="SUPER_ADMIN">Super Admin</option>
-                  </select>
-                </div>
-              </div>
+                    <Edit2Icon className="w-4 h-4"/>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(u.id)}
+                    className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                    disabled={u.id === me?.id}
+                  >
+                    <Trash2Icon className="w-4 h-4"/>
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowAddUserForm(false)}
-                  className="mr-2 bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
-                >
-                  Create User
-                </button>
-              </div>
-            </form>
-          </div>
+      {/* Pagination */}
+      {pageCount > 1 && (
+        <div className="flex justify-center items-center space-x-2 mt-4">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(p-1, 1))}
+            disabled={currentPage===1}
+            className="px-3 py-1 border rounded-md bg-white hover:bg-gray-50 disabled:opacity-50"
+          >
+            Prev
+          </button>
+          {[...Array(pageCount)].map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentPage(i+1)}
+              className={`px-3 py-1 border rounded-md ${currentPage===i+1 ? 'bg-blue-500 text-white' : 'bg-white hover:bg-gray-50'}`}
+            >
+              {i+1}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage(p => Math.min(p+1, pageCount))}
+            disabled={currentPage===pageCount}
+            className="px-3 py-1 border rounded-md bg-white hover:bg-gray-50 disabled:opacity-50"
+          >
+            Next
+          </button>
         </div>
       )}
-
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6">
-          <h2 className="text-xl font-semibold mb-4">All Users</h2>
-          
-          {users.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p>No users found.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                     Role
-                   </th>
-                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                     Created
-                   </th>
-                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                     Actions
-                   </th>
-                 </tr>
-               </thead>
-               <tbody className="bg-white divide-y divide-gray-200">
-                 {users.map(user => (
-                   <tr key={user.id} className="hover:bg-gray-50">
-                     <td className="px-6 py-4 whitespace-nowrap">
-                       <div className="text-sm font-medium text-gray-900">
-                         {user.name || 'N/A'}
-                       </div>
-                     </td>
-                     <td className="px-6 py-4 whitespace-nowrap">
-                       <div className="text-sm text-gray-500">
-                         {user.email}
-                       </div>
-                     </td>
-                     <td className="px-6 py-4 whitespace-nowrap">
-                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                         user.role === 'SUPER_ADMIN' 
-                           ? 'bg-purple-100 text-purple-800' 
-                           : 'bg-blue-100 text-blue-800'
-                       }`}>
-                         {user.role}
-                       </span>
-                     </td>
-                     <td className="px-6 py-4 whitespace-nowrap">
-                       <div className="text-sm text-gray-500">
-                         {new Date(user.createdAt).toLocaleDateString()}
-                       </div>
-                     </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                       <button
-                         onClick={() => handleDeleteUser(user.id)}
-                         className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                         disabled={user.id === user?.id}
-                       >
-                         Delete
-                       </button>
-                     </td>
-                   </tr>
-                 ))}
-               </tbody>
-             </table>
-           </div>
-         )}
-       </div>
-     </div>
-   </div>
- );
+    </div>
+  );
 }
