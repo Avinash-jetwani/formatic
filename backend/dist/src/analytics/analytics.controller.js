@@ -23,49 +23,127 @@ let AnalyticsController = class AnalyticsController {
     constructor(analytics) {
         this.analytics = analytics;
     }
-    getClientGrowth(days) {
-        return this.analytics.getClientGrowth(+days || 30);
+    async getClientGrowth(start, end) {
+        const data = await this.analytics.getClientGrowth(start, end);
+        return data;
     }
-    getFormQuality() {
-        return this.analytics.getFormQualityMetrics();
+    async getFormQuality() {
+        const data = await this.analytics.getFormQuality();
+        return data;
     }
-    getSubmissionFunnel(formId) {
-        return this.analytics.getFunnelData(formId);
+    async getFormCompletionRates(req, clientId) {
+        if (req.user.role === client_1.Role.SUPER_ADMIN) {
+            const data = await this.analytics.getFormCompletionRates(clientId);
+            return data;
+        }
+        else {
+            const data = await this.analytics.getFormCompletionRates(req.user.id);
+            return data;
+        }
     }
-    getFieldDistribution(clientId) {
-        return this.analytics.getFieldTypeDistribution(clientId);
+    async getSubmissionFunnel(req, clientId) {
+        if (req.user.role === client_1.Role.SUPER_ADMIN || req.user.id === clientId) {
+            const data = await this.analytics.getSubmissionFunnel(clientId);
+            return data;
+        }
+        else {
+            return { error: 'Unauthorized', status: 403 };
+        }
+    }
+    async getFieldDistribution(req, clientId) {
+        if (req.user.role === client_1.Role.SUPER_ADMIN || req.user.id === clientId) {
+            const data = await this.analytics.getFieldDistribution(clientId);
+            return data;
+        }
+        else {
+            return { error: 'Unauthorized', status: 403 };
+        }
+    }
+    async getConversionTrends(req, clientId, start, end) {
+        if (req.user.role === client_1.Role.SUPER_ADMIN || req.user.id === clientId) {
+            const data = await this.analytics.getConversionTrends(clientId, start, end);
+            return data;
+        }
+        else {
+            return { error: 'Unauthorized', status: 403 };
+        }
+    }
+    async exportDashboardData(req, role, userId, start, end, res) {
+        if (req.user.role === client_1.Role.SUPER_ADMIN ||
+            (req.user.role === client_1.Role.CLIENT && req.user.id === userId)) {
+            const csvData = await this.analytics.exportDashboardData(role, userId, start, end);
+            res.send(csvData);
+        }
+        else {
+            res.status(403).json({ error: 'Unauthorized' });
+        }
     }
 };
 exports.AnalyticsController = AnalyticsController;
 __decorate([
-    (0, common_1.Get)('clients/growth'),
+    (0, common_1.Get)('client-growth'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN),
-    __param(0, (0, common_1.Query)('days')),
+    __param(0, (0, common_1.Query)('start')),
+    __param(1, (0, common_1.Query)('end')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
 ], AnalyticsController.prototype, "getClientGrowth", null);
 __decorate([
-    (0, common_1.Get)('forms/quality'),
+    (0, common_1.Get)('form-quality'),
     (0, roles_decorator_1.Roles)(client_1.Role.SUPER_ADMIN),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], AnalyticsController.prototype, "getFormQuality", null);
 __decorate([
-    (0, common_1.Get)('submissions/funnel'),
-    __param(0, (0, common_1.Query)('formId')),
+    (0, common_1.Get)('form-completion-rates'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('clientId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], AnalyticsController.prototype, "getFormCompletionRates", null);
+__decorate([
+    (0, common_1.Get)('submission-funnel'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('clientId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
 ], AnalyticsController.prototype, "getSubmissionFunnel", null);
 __decorate([
-    (0, common_1.Get)('fields/distribution'),
-    __param(0, (0, common_1.Query)('clientId')),
+    (0, common_1.Get)('field-distribution'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('clientId')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
 ], AnalyticsController.prototype, "getFieldDistribution", null);
+__decorate([
+    (0, common_1.Get)('conversion-trends'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('clientId')),
+    __param(2, (0, common_1.Query)('start')),
+    __param(3, (0, common_1.Query)('end')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String]),
+    __metadata("design:returntype", Promise)
+], AnalyticsController.prototype, "getConversionTrends", null);
+__decorate([
+    (0, common_1.Get)('export'),
+    (0, common_1.Header)('Content-Type', 'text/csv'),
+    (0, common_1.Header)('Content-Disposition', 'attachment; filename=dashboard-data.csv'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('role')),
+    __param(2, (0, common_1.Query)('userId')),
+    __param(3, (0, common_1.Query)('start')),
+    __param(4, (0, common_1.Query)('end')),
+    __param(5, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, String, Object]),
+    __metadata("design:returntype", Promise)
+], AnalyticsController.prototype, "exportDashboardData", null);
 exports.AnalyticsController = AnalyticsController = __decorate([
     (0, common_1.Controller)('analytics'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

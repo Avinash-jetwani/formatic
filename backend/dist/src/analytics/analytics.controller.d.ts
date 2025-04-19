@@ -1,21 +1,34 @@
 import { AnalyticsService } from './analytics.service';
+import { Response } from 'express';
 export declare class AnalyticsController {
     private readonly analytics;
     constructor(analytics: AnalyticsService);
-    getClientGrowth(days: string): Promise<{
-        date: string;
-        count: number;
-    }[]>;
+    getClientGrowth(start: string, end: string): Promise<any[]>;
     getFormQuality(): Promise<{
         avgSubsPerForm: number;
     }>;
-    getSubmissionFunnel(formId: string): Promise<{
+    getFormCompletionRates(req: any, clientId?: string): Promise<{
+        form: string;
+        rate: number;
+    }[]>;
+    getSubmissionFunnel(req: any, clientId: string): Promise<{
         views: number;
         starts: number;
         submissions: number;
+    } | {
+        error: string;
+        status: number;
     }>;
-    getFieldDistribution(clientId: string): Promise<{
-        type: import(".prisma/client").$Enums.FieldType;
-        count: number;
-    }[]>;
+    getFieldDistribution(req: any, clientId: string): Promise<{
+        type: string;
+        count: unknown;
+    }[] | {
+        error: string;
+        status: number;
+    }>;
+    getConversionTrends(req: any, clientId: string, start: string, end: string): Promise<any[] | {
+        error: string;
+        status: number;
+    }>;
+    exportDashboardData(req: any, role: string, userId: string, start: string, end: string, res: Response): Promise<void>;
 }

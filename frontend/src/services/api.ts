@@ -157,13 +157,48 @@ export const usersService = {
 
 // analyticsService
 export const analyticsService = {
-  getClientGrowth: async (start: string, end: string) =>
-    fetchApi(`/analytics/clients/growth?start=${start}&end=${end}`),
-  getFormQuality: async () =>
-    fetchApi('/analytics/forms/quality'),
-  getSubmissionFunnel: async (formId: string) =>
-    fetchApi(`/analytics/submissions/funnel?formId=${formId}`),
-  getFieldDistribution: async (clientId: string) =>
-    fetchApi(`/analytics/fields/distribution?clientId=${clientId}`),
-  // …repeat for each endpoint…
+  // Get client growth data between two dates
+  getClientGrowth: (start: string, end: string) => {
+    return fetchApi(`/analytics/client-growth?start=${start}&end=${end}`);
+  },
+  
+  // Get form quality metrics (e.g. average submissions per form)
+  getFormQuality: () => {
+    return fetchApi('/analytics/form-quality');
+  },
+  
+  // Get completion rates for forms
+  getFormCompletionRates: (clientId?: string) => {
+    const url = clientId 
+      ? `/analytics/form-completion-rates?clientId=${clientId}`
+      : '/analytics/form-completion-rates';
+    return fetchApi(url);
+  },
+  
+  // Get submission funnel data for a specific client
+  getSubmissionFunnel: (clientId: string) => {
+    return fetchApi(`/analytics/submission-funnel?clientId=${clientId}`);
+  },
+  
+  // Get field distribution data for a specific client
+  getFieldDistribution: (clientId: string) => {
+    return fetchApi(`/analytics/field-distribution?clientId=${clientId}`);
+  },
+  
+  // Get conversion trends over time
+  getConversionTrends: (clientId: string, start: string, end: string) => {
+    return fetchApi(`/analytics/conversion-trends?clientId=${clientId}&start=${start}&end=${end}`);
+  },
+  
+  // Export dashboard data as CSV
+  exportDashboardData: (role: string, userId: string, start: string, end: string) => {
+    return fetchApi(
+      `/analytics/export?role=${role}&userId=${userId}&start=${start}&end=${end}`,
+      { 
+        headers: {
+          'Accept': 'text/csv'
+        } 
+      }
+    );
+  }
 };

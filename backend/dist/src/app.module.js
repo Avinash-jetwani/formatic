@@ -10,11 +10,11 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
-const prisma_module_1 = require("./prisma/prisma.module");
 const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const forms_module_1 = require("./forms/forms.module");
 const submissions_module_1 = require("./submissions/submissions.module");
+const prisma_module_1 = require("./prisma/prisma.module");
 const analytics_module_1 = require("./analytics/analytics.module");
 let AppModule = class AppModule {
 };

@@ -2,20 +2,23 @@ import { PrismaService } from '../prisma/prisma.service';
 export declare class AnalyticsService {
     private readonly prisma;
     constructor(prisma: PrismaService);
-    getClientGrowth(days: number): Promise<{
-        date: string;
-        count: number;
-    }[]>;
-    getFormQualityMetrics(): Promise<{
+    getClientGrowth(startDate: string, endDate: string): Promise<any[]>;
+    getFormQuality(): Promise<{
         avgSubsPerForm: number;
     }>;
-    getFunnelData(formId: string): Promise<{
+    getFormCompletionRates(clientId?: string): Promise<{
+        form: string;
+        rate: number;
+    }[]>;
+    getSubmissionFunnel(clientId: string): Promise<{
         views: number;
         starts: number;
         submissions: number;
     }>;
-    getFieldTypeDistribution(clientId: string): Promise<{
-        type: import(".prisma/client").$Enums.FieldType;
-        count: number;
+    getFieldDistribution(clientId: string): Promise<{
+        type: string;
+        count: unknown;
     }[]>;
+    getConversionTrends(clientId: string, startDate: string, endDate: string): Promise<any[]>;
+    exportDashboardData(role: string, userId: string, startDate: string, endDate: string): Promise<string>;
 }
