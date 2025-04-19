@@ -165,7 +165,7 @@ export default function UsersPage() {
         <h1 className="text-2xl font-bold">User Management</h1>
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => router.push('/dashboard/admin/users/create')}
+            onClick={() => router.push('/admin/users/create')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
           >
             <Edit2Icon className="w-5 h-5 mr-1" /> Add User
@@ -284,12 +284,12 @@ export default function UsersPage() {
                   {new Date(u.createdAt).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm flex gap-4">
-                  <button
-                    onClick={() => router.push(`/dashboard/admin/users/${u.id}/edit`)}
-                    className="text-blue-600 hover:text-blue-900"
-                  >
-                    <Edit2Icon className="w-4 h-4"/>
-                  </button>
+                <button
+  onClick={() => router.push(`/admin/users/${u.id}/edit`)}
+  className="text-blue-600 hover:text-blue-900"
+>
+  <Edit2Icon className="w-4 h-4"/>
+</button>
                   <button
                     onClick={() => handleDelete(u.id)}
                     className="text-red-600 hover:text-red-900 disabled:opacity-50"
