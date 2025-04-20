@@ -240,7 +240,21 @@ export default function Page() {
   };
 
  // Form submission
- const handleSubmit = async (e: React.FormEvent) => {
+ const validateForm = () => {
+  let isValid = true;
+  let updatedFields = [...formFields];
+  
+  updatedFields = updatedFields.map(field => {
+    const error = field.validation(field.value);
+    if (error) isValid = false;
+    return { ...field, error };
+  });
+  
+  setFormFields(updatedFields);
+  return isValid;
+};
+
+const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   
   if (!validateForm()) return;
@@ -255,15 +269,21 @@ export default function Page() {
       email: formFields.find(f => f.name === 'email')?.value || '',
       password: formFields.find(f => f.name === 'password')?.value || '',
       role: formFields.find(f => f.name === 'role')?.value || 'CLIENT',
-      status: formFields.find(f => f.name === 'status')?.value || 'active',
-      sendInvite: formFields.find(f => f.name === 'sendInvite')?.value === 'true'
+      status: formFields.find(f => f.name === 'status')?.value || 'active'
+      // sendInvite removed from payload
     };
+    
+    // Track if we need to send an invite (but don't send it in the user creation payload)
+    // const shouldSendInvite = formFields.find(f => f.name === 'sendInvite')?.value === 'true';
     
     const { data, error } = await usersService.createUser(userData);
     
     if (error) {
       throw new Error(error);
     }
+    
+    // Here you could add code to send the invite if shouldSendInvite is true
+    // For example: if (shouldSendInvite) { sendUserInvite(data.id); }
     
     setSuccessMessage(`User ${data.name || data.email} created successfully!`);
     
