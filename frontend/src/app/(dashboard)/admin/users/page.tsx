@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { usersService } from '@/services/api';
+import { usersService, formsService } from '@/services/api';
 import {
   Search as SearchIcon,
   ChevronDown as ChevronDownIcon,
@@ -57,6 +57,7 @@ export default function Page() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<'ALL' | 'CLIENT' | 'SUPER_ADMIN'>('ALL');
   const [filterStatus, setFilterStatus] = useState<'ALL' | 'active' | 'inactive' | 'locked'>('ALL');
+  const [recentForms, setRecentForms] = useState<any[]>([]);
   const [filterCreatedAfter, setFilterCreatedAfter] = useState<string>('');
   const [filterCreatedBefore, setFilterCreatedBefore] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
@@ -398,10 +399,58 @@ const fetchUsers = async (showRefresh = false) => {
     URL.revokeObjectURL(url);
   };
 
-  const viewUserDetails = (user: User) => {
-    setSelectedUser(user);
-    setShowDetailsModal(true);
+  const viewUserDetails = async (user: User) => {
+    try {
+      // Get detailed user data with stats
+      const { data, error } = await usersService.getUser(user.id);
+      
+      if (error) {
+        throw new Error(error);
+      }
+      
+      // Set the selected user with real data
+      setSelectedUser({
+        ...user,
+        _count: {
+          forms: data.formsCount || 0,
+          submissions: data.submissionsCount || 0
+        },
+        // Include any other data we get from the API
+      });
+      
+      setShowDetailsModal(true);
+      
+      // Optionally fetch forms for this user
+      fetchUserFormsForModal(user.id);
+      
+    } catch (err) {
+      console.error('Error fetching user details:', err);
+      // Fallback to using the user data we already have
+      setSelectedUser(user);
+      setShowDetailsModal(true);
+    }
   };
+  
+  // Function to fetch forms for the modal
+  const fetchUserFormsForModal = async (userId: string) => {
+    try {
+      const { data, error } = await formsService.getAllForms();
+      
+      if (error) {
+        throw new Error(error);
+      }
+      
+      // Filter to only forms by this user
+      const userFormsList = data.filter(form => form.clientId === userId);
+      
+      // Update the recentForms state if you have one
+      setRecentForms(userFormsList.slice(0, 3)); // Take most recent 3
+      
+    } catch (err) {
+      console.error('Error fetching user forms:', err);
+    }
+  };
+
 
   const resetFilters = () => {
     setSearchTerm('');
@@ -1076,40 +1125,48 @@ const fetchUsers = async (showRefresh = false) => {
               </div>
               
               {/* User forms summary - would be populated from real data in a production app */}
-              {(selectedUser._count?.forms || 0) > 0 && (
-                <div className="border-t border-gray-200 pt-4">
-                  <h4 className="font-medium text-gray-700 mb-2">Recent Forms</h4>
-                  <ul className="space-y-2">
-                    {[...Array(Math.min(3, selectedUser._count?.forms || 0))].map((_, i) => (
-                      <li key={i} className="bg-gray-50 p-2 rounded text-sm">
-                        <Link 
-                          href={`/forms/${i}`}
-                          className="text-blue-600 hover:underline"
-                        >
-                          Example Form {i+1}
-                        </Link>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Created: {new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}
-                          <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800">
-                            {Math.floor(Math.random() * 20)} submissions
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                  {(selectedUser._count?.forms || 0) > 3 && (
-                    <p className="text-sm text-center mt-2">
-                      <Link 
-                        href={`/forms?user=${selectedUser.id}`}
-                        className="text-blue-600 hover:underline flex items-center justify-center"
-                      >
-                        View all {selectedUser._count?.forms} forms
-                        <ChevronDownIcon className="w-3 h-3 ml-1" />
-                      </Link>
-                    </p>
-                  )}
-                </div>
-              )}
+{recentForms.length > 0 ? (
+  <div className="border-t border-gray-200 pt-4">
+    <h4 className="font-medium text-gray-700 mb-2">Recent Forms</h4>
+    <ul className="space-y-2">
+      {recentForms.map((form, i) => (
+        <li key={form.id} className="bg-gray-50 p-2 rounded text-sm">
+          <Link 
+            href={`/forms/${form.id}`}
+            className="text-blue-600 hover:underline"
+          >
+            {form.title || `Form ${i+1}`}
+          </Link>
+          <div className="text-xs text-gray-500 mt-1">
+            Created: {new Date(form.createdAt).toLocaleDateString()}
+            <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800">
+              {form._count?.submissions || 0} submissions
+            </span>
+          </div>
+        </li>
+      ))}
+    </ul>
+    {selectedUser._count?.forms && selectedUser._count.forms > 3 && (
+      <p className="text-sm text-center mt-2">
+        <Link 
+          href={`/forms?userId=${selectedUser.id}`}
+          className="text-blue-600 hover:underline flex items-center justify-center"
+        >
+          View all {selectedUser._count.forms} forms
+          <ChevronDownIcon className="w-3 h-3 ml-1" />
+        </Link>
+      </p>
+    )}
+  </div>
+) : (selectedUser._count?.forms && selectedUser._count.forms > 0) ? (
+  <div className="border-t border-gray-200 pt-4">
+    <h4 className="font-medium text-gray-700 mb-2">Recent Forms</h4>
+    <div className="text-center py-4">
+      <RefreshCwIcon className="mx-auto h-8 w-8 text-gray-400" />
+      <p className="mt-2 text-sm text-gray-500">Loading forms...</p>
+    </div>
+  </div>
+) : null}
               
               {/* Actions */}
               <div className="border-t pt-4 mt-4 flex justify-end space-x-3">

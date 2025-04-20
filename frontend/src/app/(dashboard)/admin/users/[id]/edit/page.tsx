@@ -329,40 +329,28 @@ export default function Page({ params }: { params: { id: string } }) {
     setLoadingForms(true);
     
     try {
-      // In a real implementation, you'd use the actual API
-      // const { data } = await usersService.getUserForms(userId);
+      // Fetch forms created by this user
+      const { data, error } = await formsService.getAllForms();
       
-      // Simulated forms data
-      await new Promise(resolve => setTimeout(resolve, 800));
+      if (error) {
+        throw new Error(error);
+      }
       
-      const now = new Date();
-      const simulatedForms = [
-        {
-          id: '1',
-          title: 'Customer Feedback Form',
-          created: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-          status: 'published',
-          submissions: 12
-        },
-        {
-          id: '2',
-          title: 'Event Registration',
-          created: new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-          status: 'published',
-          submissions: 28
-        },
-        {
-          id: '3',
-          title: 'Support Request Form',
-          created: new Date(now.getTime() - 25 * 24 * 60 * 60 * 1000).toISOString(),
-          status: 'draft',
-          submissions: 0
-        }
-      ];
+      // Filter forms by this user (if needed - ideally the API would handle this)
+      const userFormsList = data.filter(form => form.clientId === userId);
       
-      setUserForms(simulatedForms);
+      // Format the forms data for display
+      const formattedForms = userFormsList.map(form => ({
+        id: form.id,
+        title: form.title,
+        created: form.createdAt,
+        status: form.published ? 'published' : 'draft',
+        submissions: form._count?.submissions || 0
+      }));
+      
+      setUserForms(formattedForms);
     } catch (error) {
-      console.error('Error fetching user forms', error);
+      console.error('Error fetching user forms:', error);
     } finally {
       setLoadingForms(false);
     }

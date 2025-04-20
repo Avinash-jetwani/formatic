@@ -12,24 +12,24 @@ export declare class FormsService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            label: string;
+            formId: string;
             type: import(".prisma/client").$Enums.FieldType;
+            label: string;
             placeholder: string | null;
             required: boolean;
-            order: number;
             options: string[];
             config: import("@prisma/client/runtime/library").JsonValue | null;
-            formId: string;
+            order: number;
         }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         title: string;
         description: string | null;
         clientId: string;
         slug: string;
         published: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     findAll(userId: string, userRole: Role): Promise<({
         _count: {
@@ -38,95 +38,95 @@ export declare class FormsService {
         };
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         title: string;
         description: string | null;
         clientId: string;
         slug: string;
         published: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     })[]>;
     findOne(id: string, userId: string, userRole: Role): Promise<{
         client: {
             id: string;
-            email: string;
             name: string;
+            email: string;
         };
         fields: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            label: string;
+            formId: string;
             type: import(".prisma/client").$Enums.FieldType;
+            label: string;
             placeholder: string | null;
             required: boolean;
-            order: number;
             options: string[];
             config: import("@prisma/client/runtime/library").JsonValue | null;
-            formId: string;
+            order: number;
         }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         title: string;
         description: string | null;
         clientId: string;
         slug: string;
         published: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     findBySlug(clientId: string, slug: string): Promise<{
         client: {
             id: string;
-            email: string;
             name: string;
+            email: string;
         };
         fields: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            label: string;
+            formId: string;
             type: import(".prisma/client").$Enums.FieldType;
+            label: string;
             placeholder: string | null;
             required: boolean;
-            order: number;
             options: string[];
             config: import("@prisma/client/runtime/library").JsonValue | null;
-            formId: string;
+            order: number;
         }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         title: string;
         description: string | null;
         clientId: string;
         slug: string;
         published: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     update(id: string, userId: string, userRole: Role, updateFormDto: UpdateFormDto): Promise<{
         fields: {
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            label: string;
+            formId: string;
             type: import(".prisma/client").$Enums.FieldType;
+            label: string;
             placeholder: string | null;
             required: boolean;
-            order: number;
             options: string[];
             config: import("@prisma/client/runtime/library").JsonValue | null;
-            formId: string;
+            order: number;
         }[];
     } & {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
         title: string;
         description: string | null;
         clientId: string;
         slug: string;
         published: boolean;
+        createdAt: Date;
+        updatedAt: Date;
     }>;
     remove(id: string, userId: string, userRole: Role): Promise<{
         id: string;
@@ -135,27 +135,27 @@ export declare class FormsService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        label: string;
+        formId: string;
         type: import(".prisma/client").$Enums.FieldType;
+        label: string;
         placeholder: string | null;
         required: boolean;
-        order: number;
         options: string[];
         config: import("@prisma/client/runtime/library").JsonValue | null;
-        formId: string;
+        order: number;
     }>;
     updateField(formId: string, fieldId: string, userId: string, userRole: Role, updateFormFieldDto: UpdateFormFieldDto): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        label: string;
+        formId: string;
         type: import(".prisma/client").$Enums.FieldType;
+        label: string;
         placeholder: string | null;
         required: boolean;
-        order: number;
         options: string[];
         config: import("@prisma/client/runtime/library").JsonValue | null;
-        formId: string;
+        order: number;
     }>;
     removeField(formId: string, fieldId: string, userId: string, userRole: Role): Promise<{
         id: string;
