@@ -18,7 +18,7 @@ let UsersService = class UsersService {
         this.prisma = prisma;
     }
     async create(createUserDto) {
-        const { email, password, name, role } = createUserDto;
+        const { email, password, name, role, status } = createUserDto;
         const existingUser = await this.prisma.user.findUnique({
             where: { email },
         });
@@ -32,22 +32,67 @@ let UsersService = class UsersService {
                 password: hashedPassword,
                 name,
                 role,
+                status,
+                lastLogin: null,
             },
         });
         const { password: _, ...result } = user;
         return result;
     }
     async findAll() {
-        const users = await this.prisma.user.findMany();
-        return users.map(({ password, ...rest }) => rest);
+        const users = await this.prisma.user.findMany({
+            include: {
+                _count: {
+                    select: {
+                        forms: true
+                    }
+                }
+            }
+        });
+        const usersWithStats = await Promise.all(users.map(async (user) => {
+            const submissionsCount = await this.prisma.submission.count({
+                where: {
+                    form: {
+                        clientId: user.id
+                    }
+                }
+            });
+            const { password, ...rest } = user;
+            return {
+                ...rest,
+                formsCount: user._count.forms,
+                submissionsCount
+            };
+        }));
+        return usersWithStats;
     }
     async findOne(id) {
-        const user = await this.prisma.user.findUnique({ where: { id } });
+        const user = await this.prisma.user.findUnique({
+            where: { id },
+            include: {
+                _count: {
+                    select: {
+                        forms: true
+                    }
+                }
+            }
+        });
         if (!user) {
             throw new common_1.NotFoundException(`User with ID ${id} not found`);
         }
+        const submissionsCount = await this.prisma.submission.count({
+            where: {
+                form: {
+                    clientId: id
+                }
+            }
+        });
         const { password, ...result } = user;
-        return result;
+        return {
+            ...result,
+            formsCount: user._count.forms,
+            submissionsCount
+        };
     }
     async findByEmail(email) {
         return this.prisma.user.findUnique({ where: { email } });
@@ -69,6 +114,28 @@ let UsersService = class UsersService {
         await this.findOne(id);
         await this.prisma.user.delete({ where: { id } });
         return { id };
+    }
+    async getUserStats(userId) {
+        const formsCount = await this.prisma.form.count({
+            where: { clientId: userId }
+        });
+        const submissionsCount = await this.prisma.submission.count({
+            where: {
+                form: {
+                    clientId: userId
+                }
+            }
+        });
+        return {
+            formsCount,
+            submissionsCount
+        };
+    }
+    async updateLastLogin(userId) {
+        return this.prisma.user.update({
+            where: { id: userId },
+            data: { lastLogin: new Date() }
+        });
     }
 };
 exports.UsersService = UsersService;

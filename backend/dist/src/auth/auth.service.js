@@ -22,7 +22,16 @@ let AuthService = class AuthService {
     }
     async validateUser(email, password) {
         const user = await this.usersService.findByEmail(email);
-        if (user && await bcrypt.compare(password, user.password)) {
+        if (!user) {
+            return null;
+        }
+        if (user.status === client_1.UserStatus.LOCKED) {
+            throw new common_1.UnauthorizedException('Your account is locked. Please contact support.');
+        }
+        if (user.status === client_1.UserStatus.INACTIVE) {
+            throw new common_1.UnauthorizedException('Your account is inactive. Please contact support.');
+        }
+        if (await bcrypt.compare(password, user.password)) {
             const { password, ...result } = user;
             return result;
         }
@@ -34,6 +43,7 @@ let AuthService = class AuthService {
         if (!user) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
+        await this.usersService.updateLastLogin(user.id);
         const payload = { email: user.email, sub: user.id, role: user.role };
         return {
             user,
@@ -44,6 +54,7 @@ let AuthService = class AuthService {
         return this.usersService.create({
             ...registerDto,
             role: client_1.Role.CLIENT,
+            status: client_1.UserStatus.ACTIVE,
         });
     }
 };

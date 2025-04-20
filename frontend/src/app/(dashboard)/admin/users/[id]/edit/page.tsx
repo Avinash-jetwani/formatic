@@ -1,4 +1,3 @@
-// src/app/(dashboard)/admin/users/[id]/edit/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -29,9 +28,11 @@ import {
   Clock,
   ExternalLink,
   Activity,
-  FileText
+  FileText,
+  UserPlus
 } from 'lucide-react';
 import Link from 'next/link';
+import { use } from 'react';
 
 interface FormField {
   name: string;
@@ -57,7 +58,7 @@ interface UserActivity {
 export default function Page({ params }: { params: { id: string } }) {
   const { isAdmin, user: currentUser } = useAuth();
   const router = useRouter();
-  const userId = params.id;
+  const userId = use(params).id;
   
   // Fields definition with proper state management
   const [formFields, setFormFields] = useState<FormField[]>([
@@ -193,6 +194,13 @@ export default function Page({ params }: { params: { id: string } }) {
         }
         
         if (data) {
+          // Status mapping
+          const statusMap: Record<string, string> = {
+            'ACTIVE': 'active',
+            'INACTIVE': 'inactive',
+            'LOCKED': 'locked'
+          };
+          
           // Update form fields with user data
           setFormFields(fields => fields.map(field => {
             let value = '';
@@ -212,7 +220,8 @@ export default function Page({ params }: { params: { id: string } }) {
                 value = data.role || 'CLIENT';
                 break;
               case 'status':
-                value = data.status || 'active';
+                // Use type assertion to ensure TypeScript knows data.status is a string
+                value = statusMap[data.status as string] || 'active';
                 break;
               case 'password':
                 value = ''; // Never populate password
@@ -229,12 +238,12 @@ export default function Page({ params }: { params: { id: string } }) {
             };
           }));
           
-          // Set user statistics (simulated in this example)
+          // Set user statistics 
           setStats({
             createdAt: data.createdAt || new Date().toISOString(),
             lastLogin: data.lastLogin || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            formCount: Math.floor(Math.random() * 10),
-            submissionCount: Math.floor(Math.random() * 50)
+            formCount: data.formsCount || 0,
+            submissionCount: data.submissionsCount || 0
           });
           
           // Check if editing own account
@@ -516,11 +525,20 @@ export default function Page({ params }: { params: { id: string } }) {
       // Don't send ID in the payload
       delete userData.id;
       
+      // Convert status to uppercase for backend enum
+      if (userData.status) {
+        userData.status = userData.status.toUpperCase();
+      }
+      
+      console.log('Sending user data:', userData); // Debug log
+      
       const { data, error } = await usersService.updateUser(userId, userData);
       
       if (error) {
         throw new Error(error);
       }
+      
+      console.log('Response data:', data); // Debug log
       
       setSuccessMessage(`User updated successfully!`);
       
@@ -551,6 +569,7 @@ export default function Page({ params }: { params: { id: string } }) {
       }, 2000);
       
     } catch (err: any) {
+      console.error('Update user error:', err); // Debug log
       if (err.message && err.message.includes('already exists')) {
         // Set error on the email field
         setFormFields(fields => fields.map(field => 

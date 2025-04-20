@@ -9,7 +9,7 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto) {
-    const { email, password, name, role } = createUserDto;
+    const { email, password, name, role, status } = createUserDto;
 
     // Check if user already exists
     const existingUser = await this.prisma.user.findUnique({
@@ -30,6 +30,8 @@ export class UsersService {
         password: hashedPassword,
         name,
         role,
+        status, // Add status field
+        lastLogin: null, // Initialize lastLogin as null
       },
     });
 
@@ -39,19 +41,70 @@ export class UsersService {
   }
 
   async findAll() {
-    const users = await this.prisma.user.findMany();
-    return users.map(({ password, ...rest }) => rest);
+    const users = await this.prisma.user.findMany({
+      include: {
+        _count: {
+          select: {
+            forms: true
+          }
+        }
+      }
+    });
+    
+    // Get submission counts for each user
+    const usersWithStats = await Promise.all(
+      users.map(async (user) => {
+        const submissionsCount = await this.prisma.submission.count({
+          where: {
+            form: {
+              clientId: user.id
+            }
+          }
+        });
+        
+        const { password, ...rest } = user;
+        return {
+          ...rest,
+          formsCount: user._count.forms,
+          submissionsCount
+        };
+      })
+    );
+    
+    return usersWithStats;
   }
 
   async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.user.findUnique({ 
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            forms: true
+          }
+        }
+      }
+    });
     
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
     
+    // Get submission count
+    const submissionsCount = await this.prisma.submission.count({
+      where: {
+        form: {
+          clientId: id
+        }
+      }
+    });
+    
     const { password, ...result } = user;
-    return result;
+    return {
+      ...result,
+      formsCount: user._count.forms,
+      submissionsCount
+    };
   }
 
   async findByEmail(email: string) {
@@ -84,5 +137,33 @@ export class UsersService {
     
     await this.prisma.user.delete({ where: { id } });
     return { id };
+  }
+
+  async getUserStats(userId: string) {
+    // Get number of forms created by the user
+    const formsCount = await this.prisma.form.count({
+      where: { clientId: userId }
+    });
+    
+    // Get number of submissions across all user's forms
+    const submissionsCount = await this.prisma.submission.count({
+      where: {
+        form: {
+          clientId: userId
+        }
+      }
+    });
+    
+    return {
+      formsCount,
+      submissionsCount
+    };
+  }
+
+  async updateLastLogin(userId: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { lastLogin: new Date() }
+    });
   }
 }

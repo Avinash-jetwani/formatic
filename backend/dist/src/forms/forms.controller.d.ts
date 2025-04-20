@@ -26,9 +26,9 @@ export declare class FormsController {
         updatedAt: Date;
         title: string;
         description: string | null;
+        clientId: string;
         slug: string;
         published: boolean;
-        clientId: string;
     }>;
     findAll(req: any): Promise<({
         _count: {
@@ -41,9 +41,9 @@ export declare class FormsController {
         updatedAt: Date;
         title: string;
         description: string | null;
+        clientId: string;
         slug: string;
         published: boolean;
-        clientId: string;
     })[]>;
     findOne(id: string, req: any): Promise<{
         client: {
@@ -70,9 +70,9 @@ export declare class FormsController {
         updatedAt: Date;
         title: string;
         description: string | null;
+        clientId: string;
         slug: string;
         published: boolean;
-        clientId: string;
     }>;
     update(id: string, req: any, updateFormDto: UpdateFormDto): Promise<{
         fields: {
@@ -94,9 +94,9 @@ export declare class FormsController {
         updatedAt: Date;
         title: string;
         description: string | null;
+        clientId: string;
         slug: string;
         published: boolean;
-        clientId: string;
     }>;
     remove(id: string, req: any): Promise<{
         id: string;
@@ -155,8 +155,8 @@ export declare class FormsController {
         updatedAt: Date;
         title: string;
         description: string | null;
+        clientId: string;
         slug: string;
         published: boolean;
-        clientId: string;
     }>;
 }

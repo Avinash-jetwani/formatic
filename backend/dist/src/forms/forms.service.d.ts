@@ -27,9 +27,9 @@ export declare class FormsService {
         updatedAt: Date;
         title: string;
         description: string | null;
+        clientId: string;
         slug: string;
         published: boolean;
-        clientId: string;
     }>;
     findAll(userId: string, userRole: Role): Promise<({
         _count: {
@@ -42,9 +42,9 @@ export declare class FormsService {
         updatedAt: Date;
         title: string;
         description: string | null;
+        clientId: string;
         slug: string;
         published: boolean;
-        clientId: string;
     })[]>;
     findOne(id: string, userId: string, userRole: Role): Promise<{
         client: {
@@ -71,9 +71,9 @@ export declare class FormsService {
         updatedAt: Date;
         title: string;
         description: string | null;
+        clientId: string;
         slug: string;
         published: boolean;
-        clientId: string;
     }>;
     findBySlug(clientId: string, slug: string): Promise<{
         client: {
@@ -100,9 +100,9 @@ export declare class FormsService {
         updatedAt: Date;
         title: string;
         description: string | null;
+        clientId: string;
         slug: string;
         published: boolean;
-        clientId: string;
     }>;
     update(id: string, userId: string, userRole: Role, updateFormDto: UpdateFormDto): Promise<{
         fields: {
@@ -124,9 +124,9 @@ export declare class FormsService {
         updatedAt: Date;
         title: string;
         description: string | null;
+        clientId: string;
         slug: string;
         published: boolean;
-        clientId: string;
     }>;
     remove(id: string, userId: string, userRole: Role): Promise<{
         id: string;

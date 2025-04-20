@@ -4,7 +4,7 @@ import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
-import { Role } from '@prisma/client';
+import { Role, UserStatus } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -16,7 +16,21 @@ export class AuthService {
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.usersService.findByEmail(email);
     
-    if (user && await bcrypt.compare(password, user.password)) {
+    if (!user) {
+      return null;
+    }
+    
+    // Check if user is active
+    if (user.status === UserStatus.LOCKED) {
+      throw new UnauthorizedException('Your account is locked. Please contact support.');
+    }
+    
+    if (user.status === UserStatus.INACTIVE) {
+      throw new UnauthorizedException('Your account is inactive. Please contact support.');
+    }
+    
+    // Verify password
+    if (await bcrypt.compare(password, user.password)) {
       const { password, ...result } = user;
       return result;
     }
@@ -32,6 +46,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
     
+    // Update last login time
+    await this.usersService.updateLastLogin(user.id);
+    
     const payload = { email: user.email, sub: user.id, role: user.role };
     
     return {
@@ -42,9 +59,11 @@ export class AuthService {
 
   async register(registerDto: RegisterDto) {
     // We set the role to CLIENT by default for new registrations
+    // and status to ACTIVE
     return this.usersService.create({
       ...registerDto,
       role: Role.CLIENT,
+      status: UserStatus.ACTIVE,
     });
   }
 }

@@ -9,22 +9,38 @@ export declare class UsersController {
         email: string;
         name: string | null;
         role: import(".prisma/client").$Enums.Role;
+        status: import(".prisma/client").$Enums.UserStatus;
+        lastLogin: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
     findAll(): Promise<{
+        formsCount: number;
+        submissionsCount: number;
+        _count: {
+            forms: number;
+        };
         id: string;
         email: string;
         name: string | null;
         role: import(".prisma/client").$Enums.Role;
+        status: import(".prisma/client").$Enums.UserStatus;
+        lastLogin: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }[]>;
     findOne(id: string): Promise<{
+        formsCount: number;
+        submissionsCount: number;
+        _count: {
+            forms: number;
+        };
         id: string;
         email: string;
         name: string | null;
         role: import(".prisma/client").$Enums.Role;
+        status: import(".prisma/client").$Enums.UserStatus;
+        lastLogin: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
@@ -33,6 +49,8 @@ export declare class UsersController {
         email: string;
         name: string | null;
         role: import(".prisma/client").$Enums.Role;
+        status: import(".prisma/client").$Enums.UserStatus;
+        lastLogin: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;

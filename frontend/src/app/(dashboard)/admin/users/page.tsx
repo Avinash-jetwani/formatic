@@ -90,51 +90,52 @@ export default function Page() {
     inactiveUsers: 0
   });
 
-  const fetchUsers = async (showRefresh = false) => {
-    if (showRefresh) setRefreshing(true);
-    else setLoading(true);
-    
-    try {
-      const { data, error } = await usersService.getAllUsers();
-      if (data && !error) {
-        // In a real implementation, you would have a dedicated API endpoint
-        // that returns users with their form and submission counts and status
-        // Here we're simulating it
-        const enhancedUsers = data.map((user: User) => ({
-          ...user,
-          _count: {
-            forms: Math.floor(Math.random() * 10),
-            submissions: Math.floor(Math.random() * 50)
-          },
-          lastLogin: new Date(new Date().getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-          status: ['active', 'active', 'active', 'inactive', 'locked'][Math.floor(Math.random() * 5)] as 'active' | 'inactive' | 'locked'
-        }));
-        
-        setUsers(enhancedUsers);
-        
-        // Calculate statistics
-        const adminCount = enhancedUsers.filter(u => u.role === 'SUPER_ADMIN').length;
-        const clientCount = enhancedUsers.filter(u => u.role === 'CLIENT').length;
-        const activeUsers = enhancedUsers.filter(u => u.status === 'active').length;
-        const inactiveUsers = enhancedUsers.filter(u => u.status === 'inactive' || u.status === 'locked').length;
-        
-        setStats({
-          totalUsers: enhancedUsers.length,
-          adminCount,
-          clientCount,
-          activeUsers,
-          inactiveUsers
-        });
-      } else {
-        setError(error || 'Failed to load users');
-      }
-    } catch (err) {
-      setError('Network error');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+// In src/app/(dashboard)/admin/users/page.tsx, replace this block:
+const fetchUsers = async (showRefresh = false) => {
+  if (showRefresh) setRefreshing(true);
+  else setLoading(true);
+  
+  try {
+    const { data, error } = await usersService.getAllUsers();
+    if (data && !error) {
+      // Define status mapping
+      const statusMap = {
+        'ACTIVE': 'active',
+        'INACTIVE': 'inactive',
+        'LOCKED': 'locked'
+      };
+      
+      // Map data and convert status to frontend format
+      const enhancedUsers = data.map((user: User) => ({
+        ...user,
+        status: statusMap[user.status] || 'active'
+      }));
+      
+      setUsers(enhancedUsers);
+      
+      // Calculate statistics
+      const adminCount = enhancedUsers.filter(u => u.role === 'SUPER_ADMIN').length;
+      const clientCount = enhancedUsers.filter(u => u.role === 'CLIENT').length;
+      const activeUsers = enhancedUsers.filter(u => u.status === 'active').length;
+      const inactiveUsers = enhancedUsers.filter(u => u.status === 'inactive' || u.status === 'locked').length;
+      
+      setStats({
+        totalUsers: enhancedUsers.length,
+        adminCount,
+        clientCount,
+        activeUsers,
+        inactiveUsers
+      });
+    } else {
+      setError(error || 'Failed to load users');
     }
-  };
+  } catch (err) {
+    setError('Network error');
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+  }
+};
 
   useEffect(() => {
     if (!isAdmin) {
@@ -332,8 +333,14 @@ export default function Page() {
     const newStatus = userToToggleLock.status === 'locked' ? 'active' : 'locked';
     
     try {
-      // In a real app, you would call an API to update the user's status
-      // Here we're just updating the local state
+      // Call API to update the user's status
+      const { data, error } = await usersService.updateUser(userToToggleLock.id, {
+        status: newStatus.toUpperCase() // Convert to uppercase for enum value
+      });
+      
+      if (error) throw new Error(error);
+      
+      // Update local state
       setUsers(users => 
         users.map(u => 
           u.id === userToToggleLock.id 

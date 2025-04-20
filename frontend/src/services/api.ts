@@ -144,13 +144,26 @@ export const submissionsService = {
 export const usersService = {
   getAllUsers: async () => fetchApi('/users'),
   getUser: async (id: string) => fetchApi(`/users/${id}`),
-  createUser: async (userData: any) =>
-    fetchApi('/users', { method: 'POST', body: JSON.stringify(userData) }),
-  updateUser: async (id: string, userData: any) =>
-    fetchApi(`/users/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(userData),
-    }),
+  createUser: async (userData: any) => {
+    // Convert status to uppercase enum if it exists
+    if (userData.status && typeof userData.status === 'string') {
+      userData.status = userData.status.toUpperCase();
+    }
+    return fetchApi('/users', { method: 'POST', body: JSON.stringify(userData) });
+  },
+  updateUser: async (id: string, userData: any) => {
+    console.log('updateUser called with:', id, userData); // Debug log
+    
+    // Convert status to uppercase for backend enum
+    if (userData.status && typeof userData.status === 'string') {
+      userData.status = userData.status.toUpperCase();
+    }
+    
+    return fetchApi(`/users/${id}`, { 
+      method: 'PATCH', 
+      body: JSON.stringify(userData) 
+    });
+  },
   deleteUser: async (id: string) =>
     fetchApi(`/users/${id}`, { method: 'DELETE' }),
 };

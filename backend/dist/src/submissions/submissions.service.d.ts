@@ -33,9 +33,9 @@ export declare class SubmissionsService {
             updatedAt: Date;
             title: string;
             description: string | null;
+            clientId: string;
             slug: string;
             published: boolean;
-            clientId: string;
         };
     } & {
         id: string;

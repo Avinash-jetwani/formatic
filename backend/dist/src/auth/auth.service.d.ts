@@ -16,6 +16,8 @@ export declare class AuthService {
         email: string;
         name: string | null;
         role: import(".prisma/client").$Enums.Role;
+        status: import(".prisma/client").$Enums.UserStatus;
+        lastLogin: Date | null;
         createdAt: Date;
         updatedAt: Date;
     }>;
