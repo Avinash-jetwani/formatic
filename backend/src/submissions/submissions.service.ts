@@ -1,3 +1,4 @@
+// /backend/src/submissions/submissions.service.ts
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -25,42 +26,51 @@ export class SubmissionsService {
     });
   }
 
-  async findAll(userId: string, userRole: Role) {
-    // Super admin can see all submissions
-    if (userRole === Role.SUPER_ADMIN) {
-      return this.prisma.submission.findMany({
-        include: {
-          form: {
-            select: {
-              title: true,
-              client: {
-                select: {
-                  name: true,
-                  email: true,
-                }
-              }
-            }
-          }
-        },
-      });
-    }
-    
-    // Clients can only see submissions for their forms
+// In /src/submissions/submissions.service.ts - update the findAll method
+async findAll(userId: string, userRole: Role) {
+  // Super admin can see all submissions
+  if (userRole === Role.SUPER_ADMIN) {
     return this.prisma.submission.findMany({
-      where: {
-        form: {
-          clientId: userId,
-        },
-      },
       include: {
         form: {
           select: {
             title: true,
+            clientId: true,
+            client: {
+              select: {
+                name: true,
+                email: true,
+              }
+            }
           }
         }
       },
+      orderBy: {
+        createdAt: 'desc'
+      },
     });
   }
+  
+  // Clients can only see submissions for their forms
+  return this.prisma.submission.findMany({
+    where: {
+      form: {
+        clientId: userId,
+      },
+    },
+    include: {
+      form: {
+        select: {
+          title: true,
+          clientId: true,
+        }
+      }
+    },
+    orderBy: {
+      createdAt: 'desc'
+    },
+  });
+}
 
   async findByForm(formId: string, userId: string, userRole: Role) {
     // Check if form exists

@@ -15,7 +15,7 @@ export declare class AnalyticsService {
         starts: number;
         submissions: number;
     }>;
-    getFieldDistribution(clientId: string): Promise<{
+    getFieldDistribution(clientId?: string): Promise<{
         type: string;
         count: unknown;
     }[]>;

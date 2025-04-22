@@ -19,13 +19,10 @@ export declare class AnalyticsController {
         error: string;
         status: number;
     }>;
-    getFieldDistribution(req: any, clientId: string): Promise<{
+    getFieldDistribution(req: any, clientId?: string): Promise<{
         type: string;
         count: unknown;
-    }[] | {
-        error: string;
-        status: number;
-    }>;
+    }[]>;
     getConversionTrends(req: any, clientId: string, start: string, end: string): Promise<any[] | {
         error: string;
         status: number;

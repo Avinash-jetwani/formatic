@@ -60,14 +60,16 @@ export class AnalyticsController {
   @Get('field-distribution')
   async getFieldDistribution(
     @Request() req,
-    @Query('clientId') clientId: string,
+    @Query('clientId') clientId?: string,
   ) {
-    // Super admins can view any client's data, clients can only view their own
-    if (req.user.role === Role.SUPER_ADMIN || req.user.id === clientId) {
+    // Super admins can view all data or specific client data
+    if (req.user.role === Role.SUPER_ADMIN) {
       const data = await this.analytics.getFieldDistribution(clientId);
       return data;
     } else {
-      return { error: 'Unauthorized', status: 403 };
+      // Clients can only view their own data
+      const data = await this.analytics.getFieldDistribution(req.user.id);
+      return data;
     }
   }
 

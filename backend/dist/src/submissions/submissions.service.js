@@ -38,6 +38,7 @@ let SubmissionsService = class SubmissionsService {
                     form: {
                         select: {
                             title: true,
+                            clientId: true,
                             client: {
                                 select: {
                                     name: true,
@@ -46,6 +47,9 @@ let SubmissionsService = class SubmissionsService {
                             }
                         }
                     }
+                },
+                orderBy: {
+                    createdAt: 'desc'
                 },
             });
         }
@@ -59,8 +63,12 @@ let SubmissionsService = class SubmissionsService {
                 form: {
                     select: {
                         title: true,
+                        clientId: true,
                     }
                 }
+            },
+            orderBy: {
+                createdAt: 'desc'
             },
         });
     }

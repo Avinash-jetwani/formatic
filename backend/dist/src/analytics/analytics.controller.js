@@ -51,12 +51,13 @@ let AnalyticsController = class AnalyticsController {
         }
     }
     async getFieldDistribution(req, clientId) {
-        if (req.user.role === client_1.Role.SUPER_ADMIN || req.user.id === clientId) {
+        if (req.user.role === client_1.Role.SUPER_ADMIN) {
             const data = await this.analytics.getFieldDistribution(clientId);
             return data;
         }
         else {
-            return { error: 'Unauthorized', status: 403 };
+            const data = await this.analytics.getFieldDistribution(req.user.id);
+            return data;
         }
     }
     async getConversionTrends(req, clientId, start, end) {

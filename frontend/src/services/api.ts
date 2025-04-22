@@ -194,8 +194,11 @@ export const analyticsService = {
   },
   
   // Get field distribution data for a specific client
-  getFieldDistribution: (clientId: string) => {
-    return fetchApi(`/analytics/field-distribution?clientId=${clientId}`);
+  getFieldDistribution: (clientId?: string) => {
+    const url = clientId 
+      ? `/analytics/field-distribution?clientId=${clientId}`
+      : '/analytics/field-distribution';
+    return fetchApi(url);
   },
   
   // Get conversion trends over time

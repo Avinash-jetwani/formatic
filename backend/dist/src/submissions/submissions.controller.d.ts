@@ -12,6 +12,7 @@ export declare class SubmissionsController {
     findAll(req: any): Promise<({
         form: {
             title: string;
+            clientId: string;
         };
     } & {
         id: string;

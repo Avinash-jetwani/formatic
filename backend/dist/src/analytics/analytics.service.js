@@ -90,10 +90,14 @@ let AnalyticsService = class AnalyticsService {
         };
     }
     async getFieldDistribution(clientId) {
-        const fields = await this.prisma.formField.findMany({
-            where: {
+        let whereClause = {};
+        if (clientId) {
+            whereClause = {
                 form: { clientId },
-            },
+            };
+        }
+        const fields = await this.prisma.formField.findMany({
+            where: whereClause,
             select: {
                 type: true,
             },

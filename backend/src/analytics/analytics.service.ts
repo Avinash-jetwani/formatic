@@ -107,12 +107,18 @@ export class AnalyticsService {
     };
   }
 
-  async getFieldDistribution(clientId: string) {
+  async getFieldDistribution(clientId?: string) {
     // Get actual field type distribution from the database
-    const fields = await this.prisma.formField.findMany({
-      where: {
+    let whereClause = {};
+    
+    if (clientId) {
+      whereClause = {
         form: { clientId },
-      },
+      };
+    }
+    
+    const fields = await this.prisma.formField.findMany({
+      where: whereClause,
       select: {
         type: true,
       },

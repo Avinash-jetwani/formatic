@@ -13,6 +13,7 @@ export declare class SubmissionsService {
     findAll(userId: string, userRole: Role): Promise<({
         form: {
             title: string;
+            clientId: string;
         };
     } & {
         id: string;
