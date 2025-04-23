@@ -57,6 +57,20 @@ export class AnalyticsController {
     }
   }
 
+  @Get('top-performing-forms')
+  async getTopPerformingForms(
+    @Request() req,
+    @Query('clientId') clientId: string,
+  ) {
+    // Super admins can view any client's data, clients can only view their own
+    if (req.user.role === Role.SUPER_ADMIN || req.user.id === clientId) {
+      const data = await this.analytics.getTopPerformingForms(clientId);
+      return data;
+    } else {
+      return { error: 'Unauthorized', status: 403 };
+    }
+  }
+
   @Get('field-distribution')
   async getFieldDistribution(
     @Request() req,

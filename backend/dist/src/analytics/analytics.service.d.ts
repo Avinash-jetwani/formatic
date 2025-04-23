@@ -20,5 +20,11 @@ export declare class AnalyticsService {
         count: unknown;
     }[]>;
     getConversionTrends(clientId: string, startDate: string, endDate: string): Promise<any[]>;
+    getTopPerformingForms(clientId: string): Promise<{
+        title: string;
+        formId: string;
+        count: number;
+        conversionRate: number;
+    }[]>;
     exportDashboardData(role: string, userId: string, startDate: string, endDate: string): Promise<string>;
 }

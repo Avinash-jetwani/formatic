@@ -50,6 +50,15 @@ let AnalyticsController = class AnalyticsController {
             return { error: 'Unauthorized', status: 403 };
         }
     }
+    async getTopPerformingForms(req, clientId) {
+        if (req.user.role === client_1.Role.SUPER_ADMIN || req.user.id === clientId) {
+            const data = await this.analytics.getTopPerformingForms(clientId);
+            return data;
+        }
+        else {
+            return { error: 'Unauthorized', status: 403 };
+        }
+    }
     async getFieldDistribution(req, clientId) {
         if (req.user.role === client_1.Role.SUPER_ADMIN) {
             const data = await this.analytics.getFieldDistribution(clientId);
@@ -115,6 +124,14 @@ __decorate([
     __metadata("design:paramtypes", [Object, String]),
     __metadata("design:returntype", Promise)
 ], AnalyticsController.prototype, "getSubmissionFunnel", null);
+__decorate([
+    (0, common_1.Get)('top-performing-forms'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('clientId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], AnalyticsController.prototype, "getTopPerformingForms", null);
 __decorate([
     (0, common_1.Get)('field-distribution'),
     __param(0, (0, common_1.Request)()),

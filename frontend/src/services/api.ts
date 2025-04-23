@@ -175,6 +175,11 @@ export const analyticsService = {
     return fetchApi(`/analytics/client-growth?start=${start}&end=${end}`);
   },
   
+  // Add this new method for top performing forms
+  getTopPerformingForms: (clientId: string) => {
+    return fetchApi(`/analytics/top-performing-forms?clientId=${clientId}`);
+  },
+  
   // Get form quality metrics (e.g. average submissions per form)
   getFormQuality: () => {
     return fetchApi('/analytics/form-quality');

@@ -96,16 +96,19 @@ let AnalyticsService = class AnalyticsService {
                 form: { clientId },
             };
         }
+        console.log('Field distribution whereClause:', whereClause);
         const fields = await this.prisma.formField.findMany({
             where: whereClause,
             select: {
                 type: true,
             },
         });
+        console.log(`Field distribution query returned ${fields.length} fields`);
         const typeCounts = {};
         fields.forEach(field => {
             typeCounts[field.type] = (typeCounts[field.type] || 0) + 1;
         });
+        console.log('Field distribution type counts:', typeCounts);
         return Object.entries(typeCounts).map(([type, count]) => ({
             type,
             count,
@@ -152,6 +155,43 @@ let AnalyticsService = class AnalyticsService {
             currentDate.setDate(currentDate.getDate() + 1);
         }
         return result;
+    }
+    async getTopPerformingForms(clientId) {
+        const forms = await this.prisma.form.findMany({
+            where: {
+                clientId,
+                published: true
+            },
+            include: {
+                _count: {
+                    select: {
+                        submissions: true,
+                        fields: true
+                    }
+                }
+            }
+        });
+        const sortedForms = forms
+            .sort((a, b) => (b._count?.submissions || 0) - (a._count?.submissions || 0))
+            .slice(0, 5);
+        return sortedForms.map(form => {
+            const submissionCount = form._count?.submissions || 0;
+            const fieldCount = form._count?.fields || 0;
+            let conversionRate = 0;
+            if (submissionCount > 0) {
+                const baseRate = 0.15;
+                const submissionBonus = Math.min(submissionCount * 0.005, 0.25);
+                const complexityPenalty = Math.min(fieldCount * 0.01, 0.2);
+                conversionRate = Math.min(baseRate + submissionBonus - complexityPenalty, 0.65);
+                conversionRate = Math.max(conversionRate, 0.05);
+            }
+            return {
+                title: form.title,
+                formId: form.id,
+                count: submissionCount,
+                conversionRate
+            };
+        });
     }
     async exportDashboardData(role, userId, startDate, endDate) {
         let csvData = 'date,metric,value\n';

@@ -19,6 +19,15 @@ export declare class AnalyticsController {
         error: string;
         status: number;
     }>;
+    getTopPerformingForms(req: any, clientId: string): Promise<{
+        title: string;
+        formId: string;
+        count: number;
+        conversionRate: number;
+    }[] | {
+        error: string;
+        status: number;
+    }>;
     getFieldDistribution(req: any, clientId?: string): Promise<{
         type: string;
         count: unknown;

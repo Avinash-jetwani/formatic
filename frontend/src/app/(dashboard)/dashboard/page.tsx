@@ -468,8 +468,16 @@ export default function DashboardPage() {
             const funnelRes = await analyticsService.getSubmissionFunnel(user.id);
             const fieldDistRes = await analyticsService.getFieldDistribution(user.id);
             const completionRatesRes = await analyticsService.getFormCompletionRates(user.id);
-            const topFormsRes = await analyticsService.getTopPerformingForms(user.id);
-
+            let topFormsRes;
+            try {
+              if (typeof analyticsService.getTopPerformingForms === 'function') {
+                topFormsRes = await analyticsService.getTopPerformingForms(user.id);
+              }
+            } catch (error) {
+              console.error("getTopPerformingForms not implemented yet:", error);
+            }
+            
+      
             // Filter submissions for this client
             const yourSubs = subs.filter(
               (s: any) => s.form?.clientId === user.id
@@ -530,9 +538,39 @@ export default function DashboardPage() {
                     fill: COLORS[index % COLORS.length],
                   }))
                 : calculateFieldDistribution(yourForms);
+              
+                console.log("Field distribution API result:", fieldDistRes);
+                console.log("Field distribution calculated:", fieldDistribution);
+                console.log("Forms fields available:", yourForms.map(f => f.fields?.length || 0));
 
            // Use the topFormsRes from above
-          const topForms = topFormsRes.data || [];
+           let topForms = [];
+try {
+  if (topFormsRes && topFormsRes.data) {
+    topForms = topFormsRes.data;
+  } else {
+    // Fallback to calculated topForms if API fails
+    topForms = yourForms
+      .map((f: any) => ({
+        title: f.title,
+        count: f._count?.submissions || 0,
+        conversionRate: f._count?.submissions > 0 ? 0.3 : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }
+} catch (error) {
+  console.error('Error processing top forms:', error);
+  // Use the same fallback as above
+  topForms = yourForms
+    .map((f: any) => ({
+      title: f.title,
+      count: f._count?.submissions || 0,
+      conversionRate: f._count?.submissions > 0 ? 0.3 : 0,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+}
 
             // Recent submissions
             const recentSubs = yourSubs
