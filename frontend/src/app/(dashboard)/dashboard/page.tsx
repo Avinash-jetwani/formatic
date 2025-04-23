@@ -267,12 +267,14 @@ export default function DashboardPage() {
           );
           const fieldDistRes = await analyticsService.getFieldDistribution();
           const formQualityRes = await analyticsService.getFormQuality();
+          const completionRatesRes = await analyticsService.getFormCompletionRates(); 
 
           const forms = formsRes.data || [];
           const subs = subsRes.data || [];
           const users = usersRes.data || [];
           const clientGrowth = clientGrowthRes.data || [];
           const avgSubsPerForm = formQualityRes.data?.avgSubsPerForm ?? 0;
+          const completionRates = completionRatesRes.data || [];
 
           // Filter submissions for current and previous periods
           const currentPeriodSubs = subs.filter((s: any) => {
@@ -377,22 +379,7 @@ export default function DashboardPage() {
                   fill: COLORS[index % COLORS.length],
                 }));
 
-          // Mock form completion rates
-          const completionRates = forms
-            .filter((f: any) => f.published)
-            .slice(0, 5)
-            .map((form: any) => {
-              const submissionCount = form._count?.submissions || 0;
-              const rate =
-                submissionCount > 0
-                  ? Math.min(40 + Math.floor(submissionCount * 5), 95)
-                  : 0;
-
-              return {
-                form: form.title,
-                rate,
-              };
-            });
+          
 
           // Generate dynamic alerts
           const newAlerts = [];
@@ -478,12 +465,10 @@ export default function DashboardPage() {
 
           // Get client analytics data
           try {
-            const funnelRes = await analyticsService.getSubmissionFunnel(
-              user.id
-            );
-            const fieldDistRes = await analyticsService.getFieldDistribution(
-              user.id
-            );
+            const funnelRes = await analyticsService.getSubmissionFunnel(user.id);
+            const fieldDistRes = await analyticsService.getFieldDistribution(user.id);
+            const completionRatesRes = await analyticsService.getFormCompletionRates(user.id);
+            const topFormsRes = await analyticsService.getTopPerformingForms(user.id);
 
             // Filter submissions for this client
             const yourSubs = subs.filter(
@@ -492,10 +477,12 @@ export default function DashboardPage() {
             // Add debug logging
             console.log("Total subs:", subs.length);
             console.log("Your subs:", yourSubs.length);
+
             const yourPrevSubs = yourSubs.filter((s: any) => {
               const date = new Date(s.createdAt);
               return date >= new Date(startPrev) && date <= new Date(endPrev);
             });
+
             const yourCurrentSubs = yourSubs.filter((s: any) => {
               const date = new Date(s.createdAt);
               return date >= start && date <= end;
@@ -505,6 +492,7 @@ export default function DashboardPage() {
             const publishedFormsClient = yourForms.filter(
               (f: any) => f.published
             ).length;
+
             const draftFormsClient = totalFormsClient - publishedFormsClient;
             const totalSubsClient = yourCurrentSubs.length;
             const prevTotalSubsClient = yourPrevSubs.length;
@@ -514,6 +502,7 @@ export default function DashboardPage() {
             const dayCount = Math.floor(
               (end.getTime() - start.getTime()) / msPerDay
             );
+
             const submissionsOverTimeClient: ClientGrowthPoint[] = [];
             for (let i = 0; i <= dayCount; i++) {
               const d = new Date(start);
@@ -527,17 +516,11 @@ export default function DashboardPage() {
             }
 
             // Funnel data (from API or fallback to calculated values)
-            const funnel: FunnelStage[] = funnelRes.data
-              ? [
-                  { stage: "Views", count: funnelRes.data.views },
-                  { stage: "Starts", count: funnelRes.data.starts },
-                  { stage: "Submissions", count: funnelRes.data.submissions },
-                ]
-              : [
-                  { stage: "Views", count: totalSubsClient * 5 },
-                  { stage: "Starts", count: totalSubsClient * 2 },
-                  { stage: "Submissions", count: totalSubsClient },
-                ];
+            const funnel: FunnelStage[] = [
+              { stage: "Views", count: funnelRes.data?.views || 0 },
+              { stage: "Starts", count: funnelRes.data?.starts || 0 },
+              { stage: "Submissions", count: funnelRes.data?.submissions || 0 },
+            ];
 
             // Field distribution (from API or fallback)
             const fieldDistribution: FieldDist[] =
@@ -548,16 +531,8 @@ export default function DashboardPage() {
                   }))
                 : calculateFieldDistribution(yourForms);
 
-            // Top performing forms
-            const topForms = yourForms
-              .map((f: any) => ({
-                title: f.title,
-                count: f._count?.submissions || 0,
-                conversionRate:
-                  f._count?.submissions > 0 ? Math.random() * 0.5 + 0.2 : 0,
-              }))
-              .sort((a, b) => b.count - a.count)
-              .slice(0, 5);
+           // Use the topFormsRes from above
+          const topForms = topFormsRes.data || [];
 
             // Recent submissions
             const recentSubs = yourSubs
@@ -578,21 +553,8 @@ export default function DashboardPage() {
 
             console.log("Recent submissions:", recentSubs);
 
-            // Mock completion rates
-            const completionRates = yourForms
-              .filter((f: any) => f.published)
-              .map((form: any) => {
-                const submissionCount = form._count?.submissions || 0;
-                const rate =
-                  submissionCount > 0
-                    ? Math.min(40 + Math.floor(submissionCount * 5), 95)
-                    : 0;
-
-                return {
-                  form: form.title,
-                  rate,
-                };
-              });
+              // Use the completionRatesRes from above
+              const completionRates = completionRatesRes.data || [];
 
             // Generate client alerts
             const newAlerts = [];
