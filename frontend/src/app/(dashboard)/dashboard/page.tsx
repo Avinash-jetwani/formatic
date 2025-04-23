@@ -9,50 +9,46 @@ import {
   usersService,
 } from "@/services/api";
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Legend,
-  Cell,
-} from "recharts";
-import {
   UserIcon,
   UsersIcon,
   FileTextIcon,
   MessageSquareIcon,
   CheckCircleIcon,
   InboxIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-  AlertTriangleIcon,
-  TrendingUpIcon,
   DownloadIcon,
   RefreshCwIcon,
 } from "lucide-react";
+
+// Import our component library
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Input,
+  LoadingSpinner,
+  ResponsiveTable,
+  NoDataDisplay,
+  LineChartComponent,
+  BarChartComponent,
+  PieChartComponent,
+  DateRangePicker,
+} from "@/components";
+
+// Import dashboard-specific components
+import {
+  DashboardStatsCard,
+  DashboardAlert,
+  ImprovementSuggestion,
+  InfoCard,
+} from "@/components/features/dashboard";
 
 // Types
 type ClientGrowthPoint = { date: string; count: number };
 type FunnelStage = { stage: string; count: number };
 type FieldDist = { type: string; count: number; fill?: string };
 type CompletionRate = { form: string; rate: number };
-
-interface StatsCardProps {
-  title: string;
-  value: number;
-  prevValue?: number;
-  Icon: React.FC<React.SVGProps<SVGSVGElement>>;
-  borderColor: string;
-  textColor: string;
-  isLoading?: boolean;
-}
 
 // Color palette for charts
 const COLORS = [
@@ -65,88 +61,6 @@ const COLORS = [
   "#ffc658",
   "#8dd1e1",
 ];
-
-// Stats card component with trend indicator
-function StatsCard({
-  title,
-  value,
-  prevValue,
-  Icon,
-  borderColor,
-  textColor,
-  isLoading = false,
-}: StatsCardProps) {
-  const percentChange = prevValue
-    ? Math.round(((value - prevValue) / prevValue) * 100)
-    : null;
-
-  return (
-    <div
-      className={`border-2 ${borderColor} rounded-lg p-6 text-center bg-white shadow-md flex flex-col items-center`}
-    >
-      <Icon className={`w-6 h-6 mb-2 ${textColor}`} />
-      <p className="text-sm text-gray-500">{title}</p>
-      {isLoading ? (
-        <div className="animate-pulse h-8 w-16 bg-gray-300 rounded mt-2"></div>
-      ) : (
-        <>
-          <p className={`mt-2 text-3xl font-bold ${textColor}`}>{value}</p>
-          {percentChange !== null && (
-            <div
-              className={`flex items-center mt-1 text-xs ${
-                percentChange >= 0 ? "text-green-500" : "text-red-500"
-              }`}
-            >
-              {percentChange >= 0 ? (
-                <ArrowUpIcon className="w-3 h-3 mr-1" />
-              ) : (
-                <ArrowDownIcon className="w-3 h-3 mr-1" />
-              )}
-              <span>{Math.abs(percentChange)}% from previous period</span>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// Alert component for dashboard notifications
-function DashboardAlert({
-  message,
-  type = "info",
-}: {
-  message: string;
-  type?: "info" | "warning" | "success";
-}) {
-  const bgColor =
-    type === "warning"
-      ? "bg-yellow-100"
-      : type === "success"
-      ? "bg-green-100"
-      : "bg-blue-100";
-  const textColor =
-    type === "warning"
-      ? "text-yellow-800"
-      : type === "success"
-      ? "text-green-800"
-      : "text-blue-800";
-  const Icon =
-    type === "warning"
-      ? AlertTriangleIcon
-      : type === "success"
-      ? CheckCircleIcon
-      : TrendingUpIcon;
-
-  return (
-    <div
-      className={`${bgColor} ${textColor} p-4 rounded-lg flex items-start mb-6`}
-    >
-      <Icon className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-      <div>{message}</div>
-    </div>
-  );
-}
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -774,72 +688,76 @@ try {
   if (loading && !stats.totalUsers && !stats.totalFormsClient) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" />
+        <LoadingSpinner size="lg" variant="primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <div className="flex space-x-2">
-          <button
+    <div className="space-y-6 p-2 sm:p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold">Dashboard</h1>
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
             onClick={handleRefresh}
-            className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
             disabled={refreshing}
+            leftIcon={<RefreshCwIcon className={refreshing ? "animate-spin" : ""} />}
           >
-            <RefreshCwIcon
-              className={`w-4 h-4 mr-1 ${refreshing ? "animate-spin" : ""}`}
-            />
             Refresh
-          </button>
-          <button
+          </Button>
+          <Button 
+            variant="primary" 
+            size="sm"
             onClick={handleExportData}
-            className="flex items-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             disabled={exportLoading}
+            leftIcon={<DownloadIcon />}
           >
-            <DownloadIcon className="w-4 h-4 mr-1" />
             {exportLoading ? "Exporting..." : "Export CSV"}
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Date Range Picker */}
-      <div className="flex items-center space-x-4 mb-6 bg-white p-4 rounded-lg shadow">
-        <label className="font-medium">Date Range:</label>
-        <select
-          value={preset}
-          onChange={(e) => setPreset(e.target.value as any)}
-          className="border px-2 py-1 rounded"
-        >
-          <option value="7d">Last Week</option>
-          <option value="30d">Last 30 Days</option>
-          <option value="1y">Last Year</option>
-          <option value="custom">Custom</option>
-        </select>
-        {preset === "custom" && (
-          <>
-            <input
-              type="date"
-              value={start.toISOString().slice(0, 10)}
-              onChange={(e) => setStart(new Date(e.target.value))}
-              className="border px-2 py-1 rounded"
-            />
-            <span>to</span>
-            <input
-              type="date"
-              value={end.toISOString().slice(0, 10)}
-              onChange={(e) => setEnd(new Date(e.target.value))}
-              className="border px-2 py-1 rounded"
-            />
-          </>
-        )}
-      </div>
+      <Card className="mb-6">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <label className="font-medium whitespace-nowrap">Date Range:</label>
+            <select
+              value={preset}
+              onChange={(e) => setPreset(e.target.value as any)}
+              className="border px-2 py-1 rounded text-sm sm:text-base w-full sm:w-auto"
+            >
+              <option value="7d">Last Week</option>
+              <option value="30d">Last 30 Days</option>
+              <option value="1y">Last Year</option>
+              <option value="custom">Custom</option>
+            </select>
+            {preset === "custom" && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                <Input
+                  type="date"
+                  value={start.toISOString().slice(0, 10)}
+                  onChange={(e) => setStart(new Date(e.target.value))}
+                  className="w-full sm:w-auto text-sm"
+                />
+                <span className="mx-0 sm:mx-2">to</span>
+                <Input
+                  type="date"
+                  value={end.toISOString().slice(0, 10)}
+                  onChange={(e) => setEnd(new Date(e.target.value))}
+                  className="w-full sm:w-auto text-sm"
+                />
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Dashboard Alerts */}
       {alerts.length > 0 && (
-        <div className="mb-6 space-y-2">
+        <div className="mb-4 sm:mb-6 space-y-2">
           {alerts.map((alert, index) => (
             <DashboardAlert
               key={index}
@@ -853,8 +771,8 @@ try {
       {user?.role === "SUPER_ADMIN" ? (
         <>
           {/* Super‑Admin Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-            <StatsCard
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 sm:gap-4">
+            <DashboardStatsCard
               title="Total Users"
               value={stats.totalUsers || 0}
               Icon={UserIcon}
@@ -862,7 +780,7 @@ try {
               textColor="text-indigo-600"
               isLoading={loading}
             />
-            <StatsCard
+            <DashboardStatsCard
               title="Total Clients"
               value={stats.totalClients || 0}
               prevValue={stats.totalClients - stats.clientsAddedCurrentPeriod}
@@ -871,7 +789,7 @@ try {
               textColor="text-green-600"
               isLoading={loading}
             />
-            <StatsCard
+            <DashboardStatsCard
               title="Total Forms"
               value={stats.totalForms || 0}
               Icon={FileTextIcon}
@@ -879,7 +797,7 @@ try {
               textColor="text-yellow-600"
               isLoading={loading}
             />
-            <StatsCard
+            <DashboardStatsCard
               title="Total Submissions"
               value={stats.totalSubs || 0}
               prevValue={prevPeriodStats.totalSubs}
@@ -888,7 +806,7 @@ try {
               textColor="text-blue-600"
               isLoading={loading}
             />
-            <StatsCard
+            <DashboardStatsCard
               title="Published Forms"
               value={stats.publishedForms || 0}
               Icon={CheckCircleIcon}
@@ -896,7 +814,7 @@ try {
               textColor="text-teal-600"
               isLoading={loading}
             />
-            <StatsCard
+            <DashboardStatsCard
               title="Draft Forms"
               value={stats.draftForms || 0}
               Icon={InboxIcon}
@@ -907,253 +825,161 @@ try {
           </div>
 
           {/* Super‑Admin Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">Submissions Trend</h2>
-              {loading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={stats.submissionsOverTime}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="count"
-                      name="Submissions"
-                      stroke="#3182CE"
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">New Clients Growth</h2>
-              {loading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500" />
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={stats.clientGrowth}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="count"
-                      name="New Clients"
-                      stroke="#805AD5"
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-8">
+            {loading ? (
+              <Card>
+                <CardContent className="h-64 flex items-center justify-center">
+                  <LoadingSpinner size="md" variant="primary" />
+                </CardContent>
+              </Card>
+            ) : (
+              <LineChartComponent
+                data={stats.submissionsOverTime || []}
+                lines={[{ dataKey: "count", name: "Submissions", stroke: "#3182CE" }]}
+                xAxisDataKey="date"
+                title="Submissions Trend"
+                height={300}
+                className="bg-white p-3 sm:p-4 rounded-lg shadow"
+              />
+            )}
+
+            {loading ? (
+              <Card>
+                <CardContent className="h-64 flex items-center justify-center">
+                  <LoadingSpinner size="md" variant="primary" />
+                </CardContent>
+              </Card>
+            ) : (
+              <LineChartComponent
+                data={stats.clientGrowth || []}
+                lines={[{ dataKey: "count", name: "New Clients", stroke: "#805AD5" }]}
+                xAxisDataKey="date"
+                title="New Clients Growth"
+                height={300}
+                className="bg-white p-3 sm:p-4 rounded-lg shadow"
+              />
+            )}
           </div>
 
           {/* Additional Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">
-                Top Clients by Submissions
-              </h2>
-              {loading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500" />
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={stats.topClients}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="count" name="Submissions" fill="#2F855A" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">
-                Form Field Distribution
-              </h2>
-              {loading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={stats.fieldDistribution}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) =>
-                        `${name}: ${(percent * 100).toFixed(0)}%`
-                      }
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="count"
-                      nameKey="type"
-                    >
-                      {stats.fieldDistribution?.map(
-                        (entry: any, index: number) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={entry.fill || COLORS[index % COLORS.length]}
-                          />
-                        )
-                      )}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-8">
+            {loading ? (
+              <Card>
+                <CardContent className="h-64 flex items-center justify-center">
+                  <LoadingSpinner size="md" variant="primary" />
+                </CardContent>
+              </Card>
+            ) : (
+              <BarChartComponent
+                data={stats.topClients || []}
+                bars={[{ dataKey: "count", name: "Submissions", fill: "#2F855A" }]}
+                xAxisDataKey="name"
+                title="Top Clients by Submissions"
+                height={300}
+                className="bg-white p-3 sm:p-6 rounded-lg shadow"
+              />
+            )}
+
+            {loading ? (
+              <Card>
+                <CardContent className="h-64 flex items-center justify-center">
+                  <LoadingSpinner size="md" variant="primary" />
+                </CardContent>
+              </Card>
+            ) : (
+              <PieChartComponent
+                data={stats.fieldDistribution || []}
+                dataKey="count"
+                nameKey="type"
+                title="Form Field Distribution"
+                height={300}
+                colors={COLORS}
+                className="bg-white p-3 sm:p-6 rounded-lg shadow"
+              />
+            )}
           </div>
 
           {/* Form Completion Rates */}
-          <div className="bg-white p-6 rounded-lg shadow mt-8">
-            <h2 className="text-lg font-semibold mb-4">
-              Form Completion Rates
-            </h2>
-            {loading ? (
-              <div className="h-64 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-500" />
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stats.completionRates}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="form" />
-                  <YAxis tickFormatter={(value) => `${value}%`} />
-                  <Tooltip
-                    formatter={(value) => [`${value}%`, "Completion Rate"]}
-                  />
-                  <Legend />
-                  <Bar dataKey="rate" name="Completion Rate %" fill="#D69E2E" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+          <Card className="mt-4 sm:mt-8">
+            <CardHeader>
+              <CardTitle>Form Completion Rates</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="h-48 sm:h-64 flex items-center justify-center">
+                  <LoadingSpinner size="md" variant="primary" />
+                </div>
+              ) : (
+                <BarChartComponent
+                  data={stats.completionRates || []}
+                  bars={[{ dataKey: "rate", name: "Completion Rate %", fill: "#D69E2E" }]}
+                  xAxisDataKey="form"
+                  height={300}
+                />
+              )}
+            </CardContent>
+          </Card>
 
           {/* Recent Signups */}
-          <div className="bg-white p-6 rounded-lg shadow mt-8">
-            <h2 className="text-lg font-semibold mb-4">
-              Recent Client Signups
-            </h2>
-            {loading ? (
-              <div className="h-64 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-lg border border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Client Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Signup Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Forms Created
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {stats.recentSignups?.map((user: any) => (
-                      <tr key={user.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {user.name || "N/A"}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {user.email}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(user.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {user._count?.forms || 0}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <Card className="mt-4 sm:mt-8">
+            <CardHeader>
+              <CardTitle>Recent Client Signups</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="h-48 sm:h-64 flex items-center justify-center">
+                  <LoadingSpinner size="md" variant="primary" />
+                </div>
+              ) : stats.recentSignups?.length > 0 ? (
+                <ResponsiveTable
+                  headers={["Client Name", "Email", "Signup Date", "Forms Created"]}
+                  data={stats.recentSignups.map((user: any) => ({
+                    "Client Name": user.name || "N/A",
+                    "Email": user.email,
+                    "Signup Date": new Date(user.createdAt).toLocaleDateString(),
+                    "Forms Created": user._count?.forms || 0,
+                  }))}
+                  keyField="Email"
+                />
+              ) : (
+                <NoDataDisplay message="No recent signups" />
+              )}
+            </CardContent>
+          </Card>
 
           {/* System Health Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">
-                Avg Submissions per Form
-              </h2>
-              <div className="flex flex-col items-center justify-center">
-                <p className="text-5xl font-bold text-blue-600">
-                  {stats.avgSubsPerForm?.toFixed(1) ?? "–"}
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Platform-wide average
-                </p>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">Form Usage Ratio</h2>
-              <div className="flex flex-col items-center justify-center">
-                <p className="text-5xl font-bold text-green-600">
-                  {stats.publishedForms && stats.totalForms
-                    ? `${Math.round(
-                        (stats.publishedForms / stats.totalForms) * 100
-                      )}%`
-                    : "–"}
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Published vs. Total Forms
-                </p>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">
-                Client Engagement Rate
-              </h2>
-              <div className="flex flex-col items-center justify-center">
-                <p className="text-5xl font-bold text-purple-600">
-                  {stats.totalClients && stats.totalUsers
-                    ? `${Math.round(
-                        (stats.totalClients / stats.totalUsers) * 100
-                      )}%`
-                    : "–"}
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Clients vs. Total Users
-                </p>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mt-4 sm:mt-8">
+            <InfoCard
+              title="Avg Submissions per Form"
+              value={stats.avgSubsPerForm?.toFixed(1) ?? "–"}
+              subtitle="Platform-wide average"
+              textColor="text-blue-600"
+            />
+            
+            <InfoCard
+              title="Form Usage Ratio"
+              value={stats.publishedForms && stats.totalForms
+                ? `${Math.round((stats.publishedForms / stats.totalForms) * 100)}%`
+                : "–"}
+              subtitle="Published vs. Total Forms"
+              textColor="text-green-600"
+            />
+            
+            <InfoCard
+              title="Client Engagement Rate"
+              value={stats.totalClients && stats.totalUsers
+                ? `${Math.round((stats.totalClients / stats.totalUsers) * 100)}%`
+                : "–"}
+              subtitle="Clients vs. Total Users"
+              textColor="text-purple-600"
+            />
           </div>
         </>
       ) : (
         <>
           {/* Client Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <StatsCard
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+            <DashboardStatsCard
               title="Your Forms"
               value={stats.totalFormsClient || 0}
               Icon={FileTextIcon}
@@ -1161,7 +987,7 @@ try {
               textColor="text-yellow-600"
               isLoading={loading}
             />
-            <StatsCard
+            <DashboardStatsCard
               title="Published"
               value={stats.publishedFormsClient || 0}
               Icon={CheckCircleIcon}
@@ -1169,7 +995,7 @@ try {
               textColor="text-teal-600"
               isLoading={loading}
             />
-            <StatsCard
+            <DashboardStatsCard
               title="Drafts"
               value={stats.draftFormsClient || 0}
               Icon={InboxIcon}
@@ -1177,7 +1003,7 @@ try {
               textColor="text-gray-600"
               isLoading={loading}
             />
-            <StatsCard
+            <DashboardStatsCard
               title="Submissions"
               value={stats.totalSubsClient || 0}
               prevValue={prevPeriodStats.totalSubsClient}
@@ -1189,311 +1015,241 @@ try {
           </div>
 
           {/* Client Charts */}
-          <div className="bg-white p-6 rounded-lg shadow mt-8">
-            <h2 className="text-lg font-semibold mb-4">Submissions Trend</h2>
-            {loading ? (
-              <div className="h-64 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={stats.submissionsOverTimeClient}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="count"
-                    name="Submissions"
-                    stroke="#3182CE"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+          <Card className="mt-4 sm:mt-8">
+            <CardHeader>
+              <CardTitle>Submissions Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="h-48 sm:h-64 flex items-center justify-center">
+                  <LoadingSpinner size="md" variant="primary" />
+                </div>
+              ) : (
+                <LineChartComponent
+                  data={stats.submissionsOverTimeClient || []}
+                  lines={[{ dataKey: "count", name: "Submissions", stroke: "#3182CE" }]}
+                  xAxisDataKey="date"
+                  height={300}
+                />
+              )}
+            </CardContent>
+          </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">Submission Funnel</h2>
-              {loading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-500" />
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={stats.funnel}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="stage" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="count" name="Count" fill="#D69E2E" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-              <div className="mt-4 bg-blue-50 p-4 rounded text-sm text-blue-800">
-                <p className="font-medium">
-                  Conversion Rate:{" "}
-                  {stats.funnel && stats.funnel.length > 0
-                    ? `${(
-                        (stats.funnel[2]?.count / stats.funnel[0]?.count) *
-                        100
-                      ).toFixed(1)}%`
-                    : "0%"}
-                </p>
-                <p>
-                  This shows how many people who viewed your form completed a
-                  submission.
-                </p>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">
-                Field Type Distribution
-              </h2>
-              {loading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={stats.fieldDistribution}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) =>
-                        `${name}: ${(percent * 100).toFixed(0)}%`
-                      }
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="count"
-                      nameKey="type"
-                    >
-                      {stats.fieldDistribution?.map(
-                        (entry: any, index: number) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={entry.fill || COLORS[index % COLORS.length]}
-                          />
-                        )
-                      )}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Submission Funnel</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="h-48 sm:h-64 flex items-center justify-center">
+                    <LoadingSpinner size="md" variant="primary" />
+                  </div>
+                ) : (
+                  <>
+                    <BarChartComponent
+                      data={stats.funnel || []}
+                      bars={[{ dataKey: "count", name: "Count", fill: "#D69E2E" }]}
+                      xAxisDataKey="stage"
+                      height={300}
+                    />
+                    <div className="mt-4 bg-blue-50 p-2 sm:p-4 rounded text-sm text-blue-800">
+                      <p className="font-medium">
+                        Conversion Rate:{" "}
+                        {stats.funnel && stats.funnel.length > 0
+                          ? `${(
+                              (stats.funnel[2]?.count / stats.funnel[0]?.count) *
+                              100
+                            ).toFixed(1)}%`
+                          : "0%"}
+                      </p>
+                      <p>
+                        This shows how many people who viewed your form completed a
+                        submission.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Field Type Distribution</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="h-48 sm:h-64 flex items-center justify-center">
+                    <LoadingSpinner size="md" variant="primary" />
+                  </div>
+                ) : (
+                  <PieChartComponent
+                    data={stats.fieldDistribution || []}
+                    dataKey="count"
+                    nameKey="type"
+                    height={300}
+                    colors={COLORS}
+                  />
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Client Form Performance */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">
-                Top Performing Forms
-              </h2>
-              {loading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500" />
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Form Title
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Submissions
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Conversion
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {stats.topForms?.map((form: any) => (
-                        <tr key={form.title} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {form.title}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {form.count}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {form.conversionRate
-                              ? `${(form.conversionRate * 100).toFixed(1)}%`
-                              : "N/A"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4">Recent Submissions</h2>
-              {loading ? (
-                <div className="h-64 flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {stats.recentSubs?.length > 0 ? (
-                    stats.recentSubs.map((submission: any) => (
-                      <div
-                        key={submission.id || Math.random()}
-                        className="border rounded-lg p-4 hover:bg-gray-50"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-semibold text-gray-900">
-                              {submission.form?.title || "Unknown Form"}
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                              {new Date(submission.createdAt).toLocaleString()}
-                            </p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Top Performing Forms</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="h-48 sm:h-64 flex items-center justify-center">
+                    <LoadingSpinner size="md" variant="primary" />
+                  </div>
+                ) : stats.topForms?.length > 0 ? (
+                  <ResponsiveTable
+                    headers={["Form Title", "Submissions", "Conversion"]}
+                    data={stats.topForms.map((form: any) => ({
+                      "Form Title": form.title,
+                      "Submissions": form.count,
+                      "Conversion": form.conversionRate
+                        ? `${(form.conversionRate * 100).toFixed(1)}%`
+                        : "N/A",
+                    }))}
+                    keyField="Form Title"
+                  />
+                ) : (
+                  <NoDataDisplay message="No forms data available" />
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Submissions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="h-48 sm:h-64 flex items-center justify-center">
+                    <LoadingSpinner size="md" variant="primary" />
+                  </div>
+                ) : stats.recentSubs?.length > 0 ? (
+                  <div className="space-y-2 sm:space-y-4">
+                    {stats.recentSubs.map((submission: any) => (
+                      <Card key={submission.id || Math.random()} className="hover:bg-gray-50">
+                        <CardContent className="p-2 sm:p-4">
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                            <div>
+                              <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
+                                {submission.form?.title || "Unknown Form"}
+                              </h3>
+                              <p className="text-xs sm:text-sm text-gray-500">
+                                {new Date(submission.createdAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full self-start">
+                              {Object.keys(submission.data || {}).length} fields
+                            </span>
                           </div>
-                          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                            {Object.keys(submission.data || {}).length} fields
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-gray-500 py-4">
-                      No recent submissions
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <NoDataDisplay message="No recent submissions" />
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Form Completion Rates */}
-          <div className="bg-white p-6 rounded-lg shadow mt-8">
-            <h2 className="text-lg font-semibold mb-4">
-              Form Completion Rates
-            </h2>
-            {loading ? (
-              <div className="h-64 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-500" />
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stats.completionRates}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="form" />
-                  <YAxis tickFormatter={(value) => `${value}%`} />
-                  <Tooltip
-                    formatter={(value) => [`${value}%`, "Completion Rate"]}
+          <Card className="mt-4 sm:mt-8">
+            <CardHeader>
+              <CardTitle>Form Completion Rates</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="h-48 sm:h-64 flex items-center justify-center">
+                  <LoadingSpinner size="md" variant="primary" />
+                </div>
+              ) : (
+                <>
+                  <BarChartComponent
+                    data={stats.completionRates || []}
+                    bars={[{ dataKey: "rate", name: "Completion Rate %", fill: "#805AD5" }]}
+                    xAxisDataKey="form"
+                    height={300}
                   />
-                  <Legend />
-                  <Bar dataKey="rate" name="Completion Rate %" fill="#805AD5" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-            <div className="mt-4 bg-blue-50 p-4 rounded text-sm text-blue-800">
-              <p>
-                Completion rate measures how many users complete your form after
-                starting it. Higher rates indicate better form design.
-              </p>
-            </div>
-          </div>
+                  <div className="mt-4 bg-blue-50 p-2 sm:p-4 rounded text-sm text-blue-800">
+                    <p>
+                      Completion rate measures how many users complete your form after
+                      starting it. Higher rates indicate better form design.
+                    </p>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Improvement Suggestions */}
-          <div className="bg-white p-6 rounded-lg shadow mt-8">
-            <h2 className="text-lg font-semibold mb-4">
-              Form Improvement Suggestions
-            </h2>
-            <div className="space-y-4">
-              {stats.funnel &&
-                stats.funnel.length > 0 &&
-                stats.funnel[0].count > 0 &&
-                stats.funnel[2].count / stats.funnel[0].count < 0.2 && (
-                  <div className="flex space-x-4 p-4 border rounded-lg border-yellow-200 bg-yellow-50">
-                    <AlertTriangleIcon className="w-6 h-6 text-yellow-500 flex-shrink-0" />
-                    <div>
-                      <h3 className="font-medium text-yellow-800">
-                        Low Conversion Rate
-                      </h3>
-                      <p className="text-yellow-700 text-sm">
-                        Your form view-to-submission rate is below 20%. Consider
-                        simplifying your form or breaking it into smaller steps.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-              {stats.fieldDistribution &&
-                stats.fieldDistribution.some(
-                  (item: any) => item.type === "TEXT" && item.count > 5
-                ) && (
-                  <div className="flex space-x-4 p-4 border rounded-lg border-blue-200 bg-blue-50">
-                    <AlertTriangleIcon className="w-6 h-6 text-blue-500 flex-shrink-0" />
-                    <div>
-                      <h3 className="font-medium text-blue-800">
-                        High Text Field Usage
-                      </h3>
-                      <p className="text-blue-700 text-sm">
-                        You're using many text fields. Consider using
-                        specialized field types (email, number) or dropdown
-                        menus where applicable.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-              {stats.topForms &&
-                stats.topForms.some(
-                  (form: any) => form.count > 0 && form.conversionRate < 0.1
-                ) && (
-                  <div className="flex space-x-4 p-4 border rounded-lg border-red-200 bg-red-50">
-                    <AlertTriangleIcon className="w-6 h-6 text-red-500 flex-shrink-0" />
-                    <div>
-                      <h3 className="font-medium text-red-800">
-                        Forms With Very Low Conversion
-                      </h3>
-                      <p className="text-red-700 text-sm">
-                        Some of your forms have a conversion rate below 10%.
-                        Review these forms for usability issues.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-              {!stats.funnel ||
-                !stats.fieldDistribution ||
-                (stats.funnel &&
+          <Card className="mt-4 sm:mt-8">
+            <CardHeader>
+              <CardTitle>Form Improvement Suggestions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 sm:space-y-4">
+                {stats.funnel &&
                   stats.funnel.length > 0 &&
                   stats.funnel[0].count > 0 &&
-                  stats.funnel[2].count / stats.funnel[0].count >= 0.2 &&
-                  (!stats.topForms ||
-                    !stats.topForms.some(
-                      (form: any) => form.count > 0 && form.conversionRate < 0.1
-                    )) && (
-                    <div className="flex space-x-4 p-4 border rounded-lg border-green-200 bg-green-50">
-                      <CheckCircleIcon className="w-6 h-6 text-green-500 flex-shrink-0" />
-                      <div>
-                        <h3 className="font-medium text-green-800">
-                          Your forms are performing well!
-                        </h3>
-                        <p className="text-green-700 text-sm">
-                          We don't see any immediate issues with your forms.
-                          Keep up the good work!
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-            </div>
-          </div>
+                  stats.funnel[2].count / stats.funnel[0].count < 0.2 && (
+                    <ImprovementSuggestion
+                      type="warning"
+                      title="Low Conversion Rate"
+                      description="Your form view-to-submission rate is below 20%. Consider simplifying your form or breaking it into smaller steps."
+                    />
+                  )}
+
+                {stats.fieldDistribution &&
+                  stats.fieldDistribution.some(
+                    (item: any) => item.type === "TEXT" && item.count > 5
+                  ) && (
+                    <ImprovementSuggestion
+                      type="info"
+                      title="High Text Field Usage"
+                      description="You're using many text fields. Consider using specialized field types (email, number) or dropdown menus where applicable."
+                    />
+                  )}
+
+                {stats.topForms &&
+                  stats.topForms.some(
+                    (form: any) => form.count > 0 && form.conversionRate < 0.1
+                  ) && (
+                    <ImprovementSuggestion
+                      type="error"
+                      title="Forms With Very Low Conversion"
+                      description="Some of your forms have a conversion rate below 10%. Review these forms for usability issues."
+                    />
+                  )}
+
+                {!stats.funnel ||
+                  !stats.fieldDistribution ||
+                  (stats.funnel &&
+                    stats.funnel.length > 0 &&
+                    stats.funnel[0].count > 0 &&
+                    stats.funnel[2].count / stats.funnel[0].count >= 0.2 &&
+                    (!stats.topForms ||
+                      !stats.topForms.some(
+                        (form: any) => form.count > 0 && form.conversionRate < 0.1
+                      )) && (
+                      <ImprovementSuggestion
+                        type="success"
+                        title="Your forms are performing well!"
+                        description="We don't see any immediate issues with your forms. Keep up the good work!"
+                      />
+                    ))}
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
