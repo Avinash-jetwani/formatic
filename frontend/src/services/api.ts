@@ -138,6 +138,19 @@ export const submissionsService = {
     }),
   deleteSubmission: async (id: string) =>
     fetchApi(`/submissions/${id}`, { method: 'DELETE' }),
+  
+  // Get next and previous submission IDs
+  getSubmissionSiblings: async (id: string, formId: string) => {
+    try {
+      return await fetchApi(`/submissions/${id}/siblings?formId=${formId}`);
+    } catch (error) {
+      console.error('Error getting submission siblings:', error);
+      return {
+        data: { next: null, previous: null },
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  },
 };
 
 // Users services (Admin only)
