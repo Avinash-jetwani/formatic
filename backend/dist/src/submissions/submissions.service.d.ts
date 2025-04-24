@@ -6,9 +6,9 @@ export declare class SubmissionsService {
     constructor(prisma: PrismaService);
     create(createSubmissionDto: CreateSubmissionDto): Promise<{
         id: string;
-        createdAt: Date;
-        data: import("@prisma/client/runtime/library").JsonValue;
         formId: string;
+        data: import("@prisma/client/runtime/library").JsonValue;
+        createdAt: Date;
     }>;
     findAll(userId: string, userRole: Role): Promise<({
         form: {
@@ -17,32 +17,36 @@ export declare class SubmissionsService {
         };
     } & {
         id: string;
-        createdAt: Date;
-        data: import("@prisma/client/runtime/library").JsonValue;
         formId: string;
+        data: import("@prisma/client/runtime/library").JsonValue;
+        createdAt: Date;
     })[]>;
     findByForm(formId: string, userId: string, userRole: Role): Promise<{
         id: string;
-        createdAt: Date;
-        data: import("@prisma/client/runtime/library").JsonValue;
         formId: string;
+        data: import("@prisma/client/runtime/library").JsonValue;
+        createdAt: Date;
     }[]>;
     findOne(id: string, userId: string, userRole: Role): Promise<{
         form: {
             id: string;
             createdAt: Date;
-            updatedAt: Date;
             title: string;
             description: string | null;
             clientId: string;
             slug: string;
             published: boolean;
+            updatedAt: Date;
         };
     } & {
         id: string;
-        createdAt: Date;
-        data: import("@prisma/client/runtime/library").JsonValue;
         formId: string;
+        data: import("@prisma/client/runtime/library").JsonValue;
+        createdAt: Date;
+    }>;
+    findSiblings(id: string, formId: string, userId: string, userRole: Role): Promise<{
+        next: string;
+        previous: string;
     }>;
     remove(id: string, userId: string, userRole: Role): Promise<{
         id: string;

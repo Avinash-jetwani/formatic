@@ -113,6 +113,57 @@ async findAll(userId: string, userRole: Role) {
     return submission;
   }
 
+  async findSiblings(id: string, formId: string, userId: string, userRole: Role) {
+    // Check permissions first
+    const form = await this.prisma.form.findUnique({
+      where: { id: formId },
+    });
+    
+    if (!form) {
+      throw new NotFoundException(`Form with ID ${formId} not found`);
+    }
+    
+    // Check permissions
+    if (userRole !== Role.SUPER_ADMIN && form.clientId !== userId) {
+      throw new ForbiddenException('You do not have permission to access submissions for this form');
+    }
+    
+    // Find the current submission to get its timestamp
+    const currentSubmission = await this.prisma.submission.findUnique({
+      where: { id },
+      select: { createdAt: true },
+    });
+    
+    if (!currentSubmission) {
+      throw new NotFoundException(`Submission with ID ${id} not found`);
+    }
+    
+    // Find the next submission (newer than the current one)
+    const nextSubmission = await this.prisma.submission.findFirst({
+      where: {
+        formId,
+        createdAt: { gt: currentSubmission.createdAt },
+      },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+    
+    // Find the previous submission (older than the current one)
+    const previousSubmission = await this.prisma.submission.findFirst({
+      where: {
+        formId,
+        createdAt: { lt: currentSubmission.createdAt },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    
+    return {
+      next: nextSubmission?.id || null,
+      previous: previousSubmission?.id || null,
+    };
+  }
+
   async remove(id: string, userId: string, userRole: Role) {
     // Check if submission exists and user has permission
     await this.findOne(id, userId, userRole);

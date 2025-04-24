@@ -102,6 +102,44 @@ let SubmissionsService = class SubmissionsService {
         }
         return submission;
     }
+    async findSiblings(id, formId, userId, userRole) {
+        const form = await this.prisma.form.findUnique({
+            where: { id: formId },
+        });
+        if (!form) {
+            throw new common_1.NotFoundException(`Form with ID ${formId} not found`);
+        }
+        if (userRole !== client_1.Role.SUPER_ADMIN && form.clientId !== userId) {
+            throw new common_1.ForbiddenException('You do not have permission to access submissions for this form');
+        }
+        const currentSubmission = await this.prisma.submission.findUnique({
+            where: { id },
+            select: { createdAt: true },
+        });
+        if (!currentSubmission) {
+            throw new common_1.NotFoundException(`Submission with ID ${id} not found`);
+        }
+        const nextSubmission = await this.prisma.submission.findFirst({
+            where: {
+                formId,
+                createdAt: { gt: currentSubmission.createdAt },
+            },
+            orderBy: { createdAt: 'asc' },
+            select: { id: true },
+        });
+        const previousSubmission = await this.prisma.submission.findFirst({
+            where: {
+                formId,
+                createdAt: { lt: currentSubmission.createdAt },
+            },
+            orderBy: { createdAt: 'desc' },
+            select: { id: true },
+        });
+        return {
+            next: nextSubmission?.id || null,
+            previous: previousSubmission?.id || null,
+        };
+    }
     async remove(id, userId, userRole) {
         await this.findOne(id, userId, userRole);
         await this.prisma.submission.delete({ where: { id } });

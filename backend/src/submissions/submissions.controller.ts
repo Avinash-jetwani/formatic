@@ -6,7 +6,8 @@ import {
     Param, 
     Delete, 
     UseGuards, 
-    Request 
+    Request,
+    Query 
   } from '@nestjs/common';
   import { SubmissionsService } from './submissions.service';
   import { CreateSubmissionDto } from './dto/create-submission.dto';
@@ -40,6 +41,16 @@ import {
     @UseGuards(JwtAuthGuard)
     findOne(@Param('id') id: string, @Request() req) {
       return this.submissionsService.findOne(id, req.user.id, req.user.role);
+    }
+  
+    @Get(':id/siblings')
+    @UseGuards(JwtAuthGuard)
+    findSiblings(
+      @Param('id') id: string, 
+      @Query('formId') formId: string, 
+      @Request() req
+    ) {
+      return this.submissionsService.findSiblings(id, formId, req.user.id, req.user.role);
     }
   
     @Delete(':id')

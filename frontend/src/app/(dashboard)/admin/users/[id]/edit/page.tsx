@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { usersService, formsService } from '@/services/api';
@@ -29,9 +29,13 @@ import {
   ExternalLink,
   Activity,
   FileText,
-  UserPlus
+  UserPlus,
+  ChevronLeft,
+  Trash2,
+  MoreHorizontal
 } from 'lucide-react';
 import Link from 'next/link';
+import { PasswordInput } from '@/components/ui/input/PasswordInput';
 import { use } from 'react';
 
 interface FormField {
@@ -55,10 +59,27 @@ interface UserActivity {
   details: string;
 }
 
+// Add type for the user data
+interface UserData {
+  id: string;
+  name?: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt: string;
+  lastLogin?: string;
+  formsCount?: number;
+  submissionsCount?: number;
+  _count?: {
+    forms: number;
+  };
+}
+
 export default function Page({ params }: { params: { id: string } }) {
   const { isAdmin, user: currentUser } = useAuth();
   const router = useRouter();
-  const userId = use(params).id;
+  const unwrappedParams = use(params as unknown as Promise<{ id: string }>);
+  const userId = unwrappedParams.id;
   
   // Fields definition with proper state management
   const [formFields, setFormFields] = useState<FormField[]>([
@@ -155,6 +176,7 @@ export default function Page({ params }: { params: { id: string } }) {
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
   const [generatingPassword, setGeneratingPassword] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showCopyMessage, setShowCopyMessage] = useState(false);
   
   // User statistics
   const [stats, setStats] = useState({
@@ -194,6 +216,9 @@ export default function Page({ params }: { params: { id: string } }) {
         }
         
         if (data) {
+          // Type assertion to use our UserData interface
+          const userData = data as UserData;
+          
           // Status mapping
           const statusMap: Record<string, string> = {
             'ACTIVE': 'active',
@@ -208,20 +233,20 @@ export default function Page({ params }: { params: { id: string } }) {
             // Map API response to form fields
             switch (field.name) {
               case 'id':
-                value = data.id || '';
+                value = userData.id || '';
                 break;
               case 'name':
-                value = data.name || '';
+                value = userData.name || '';
                 break;
               case 'email':
-                value = data.email || '';
+                value = userData.email || '';
                 break;
               case 'role':
-                value = data.role || 'CLIENT';
+                value = userData.role || 'CLIENT';
                 break;
               case 'status':
                 // Use type assertion to ensure TypeScript knows data.status is a string
-                value = statusMap[data.status as string] || 'active';
+                value = statusMap[userData.status as string] || 'active';
                 break;
               case 'password':
                 value = ''; // Never populate password
@@ -240,10 +265,10 @@ export default function Page({ params }: { params: { id: string } }) {
           
           // Set user statistics 
           setStats({
-            createdAt: data.createdAt || new Date().toISOString(),
-            lastLogin: data.lastLogin || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            formCount: data.formsCount || 0,
-            submissionCount: data.submissionsCount || 0
+            createdAt: userData.createdAt || new Date().toISOString(),
+            lastLogin: userData.lastLogin || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            formCount: userData.formsCount || 0,
+            submissionCount: userData.submissionsCount || 0
           });
           
           // Check if editing own account
@@ -276,7 +301,7 @@ export default function Page({ params }: { params: { id: string } }) {
   }, [activeTab]);
   
   // Helper to get a field by name
-  const getField = (name: string) => formFields.find(f => f.name === name);
+  const getField = (name: string): FormField | undefined => formFields.find(f => f.name === name);
   
   // Fetch user activities (simulated)
   const fetchUserActivities = async () => {
@@ -336,8 +361,20 @@ export default function Page({ params }: { params: { id: string } }) {
         throw new Error(error);
       }
       
+      // Type the forms data
+      interface FormData {
+        id: string;
+        title: string;
+        clientId: string;
+        createdAt: string;
+        published: boolean;
+        _count?: {
+          submissions: number;
+        };
+      }
+      
       // Filter forms by this user (if needed - ideally the API would handle this)
-      const userFormsList = data.filter(form => form.clientId === userId);
+      const userFormsList = (data as FormData[]).filter(form => form.clientId === userId);
       
       // Format the forms data for display
       const formattedForms = userFormsList.map(form => ({
@@ -364,7 +401,7 @@ export default function Page({ params }: { params: { id: string } }) {
         : field
     ));
     
-    // Special handling for password strength
+    // Special handling for password
     if (name === 'password' && value) {
       calculatePasswordStrength(value);
     }
@@ -755,113 +792,31 @@ export default function Page({ params }: { params: { id: string } }) {
                   </div>
                   
                   {/* Password Field */}
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                        {getField('password')?.label} {getField('password')?.required && <span className="text-red-500">*</span>}
-                      </label>
-                      <button
-                        type="button"
-                        onClick={generateRandomPassword}
-                        disabled={generatingPassword}
-                        className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
-                      >
-                        {generatingPassword ? (
-                          <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-3 h-3 mr-1" />
-                        )}
-                        Generate password
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        id="password"
-                        name="password"
-                        value={getField('password')?.value || ''}
-                        onChange={(e) => updateField('password', e.target.value)}
-                        className={`w-full p-2 pr-24 border ${getField('password')?.error ? 'border-red-500' : 'border-gray-300'} rounded-md focus:ring-blue-500 focus:border-blue-500`}
-                        placeholder={getField('password')?.placeholder}
-                        required={getField('password')?.required}
-                        disabled={getField('password')?.disabled}
-                      />
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 space-x-2">
-                        {getField('password')?.value && (
-                          <button
-                            type="button"
-                            onClick={copyPasswordToClipboard}
-                            className="text-gray-400 hover:text-gray-600"
-                            title="Copy password"
-                          >
-                            <Copy className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="text-gray-400 hover:text-gray-600"
-                          title={showPassword ? 'Hide password' : 'Show password'}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Password strength meter */}
-                    {getField('password')?.value && (
-                      <div className="mt-2">
-                        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full ${
-                              passwordStrength < 50 
-                                ? 'bg-red-500' 
-                                : passwordStrength < 100 
-                                  ? 'bg-yellow-500' 
-                                  : 'bg-green-500'
-                            }`}
-                            style={{ width: `${passwordStrength}%` }}
-                          ></div>
-                        </div>
-                        <p className="mt-1 text-xs text-gray-500 flex items-center">
-                          {passwordStrength < 50 && (
-                            <>
-                              <XCircle className="w-3 h-3 text-red-500 mr-1" />
-                              Weak password
-                            </>
-                          )}
-                          {passwordStrength >= 50 && passwordStrength < 100 && (
-                            <>
-                              <Info className="w-3 h-3 text-yellow-500 mr-1" />
-                              Moderate password
-                            </>
-                          )}
-                          {passwordStrength === 100 && (
-                            <>
-                              <CheckCircle2 className="w-3 h-3 text-green-500 mr-1" />
-                              Strong password
-                            </>
-                          )}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {/* Clipboard message */}
-                    <div id="clipboard-message" className="hidden mt-2 text-xs text-green-600 flex items-center">
+                  <PasswordInput
+                    id="password"
+                    name="password"
+                    label={getField('password')?.label}
+                    value={getField('password')?.value || ''}
+                    onChange={(e) => updateField('password', e.target.value)}
+                    placeholder={getField('password')?.placeholder}
+                    required={getField('password')?.required}
+                    disabled={getField('password')?.disabled}
+                    error={getField('password')?.error}
+                    hint={getField('password')?.helpText}
+                    showGenerateButton={true}
+                    showStrengthIndicator={true}
+                    onCopy={() => {
+                      setShowCopyMessage(true);
+                      setTimeout(() => setShowCopyMessage(false), 2000);
+                    }}
+                  />
+
+                  {showCopyMessage && (
+                    <div className="mt-2 text-xs text-green-600 flex items-center">
                       <CheckCircle2 className="w-3 h-3 mr-1" />
                       Password copied to clipboard
                     </div>
-                    
-                    {getField('password')?.error ? (
-                      <p className="mt-1 text-sm text-red-600">{getField('password')?.error}</p>
-                    ) : getField('password')?.helpText ? (
-                      <p className="mt-1 text-sm text-gray-500">{getField('password')?.helpText}</p>
-                    ) : null}
-                  </div>
+                  )}
                   
                   {/* Role Field */}
                   <div>

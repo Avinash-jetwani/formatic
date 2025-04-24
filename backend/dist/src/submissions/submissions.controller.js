@@ -33,6 +33,9 @@ let SubmissionsController = class SubmissionsController {
     findOne(id, req) {
         return this.submissionsService.findOne(id, req.user.id, req.user.role);
     }
+    findSiblings(id, formId, req) {
+        return this.submissionsService.findSiblings(id, formId, req.user.id, req.user.role);
+    }
     remove(id, req) {
         return this.submissionsService.remove(id, req.user.id, req.user.role);
     }
@@ -71,6 +74,16 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], SubmissionsController.prototype, "findOne", null);
+__decorate([
+    (0, common_1.Get)(':id/siblings'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Query)('formId')),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", void 0)
+], SubmissionsController.prototype, "findSiblings", null);
 __decorate([
     (0, common_1.Delete)(':id'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
