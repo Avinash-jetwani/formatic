@@ -4,8 +4,13 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { formsService } from '@/services/api'
-import { AuthProvider, useAuth } from '@/contexts/AuthContext'
+import { formsService, FieldType } from '@/services/api'
+import { useAuth } from '@/contexts/AuthContext'
+import { SearchFilterBar } from '@/components/features/forms/SearchFilterBar'
+import { Button } from '@/components/ui/button/Button'
+import { FilePlus } from 'lucide-react'
+import { EnhancedFormCard } from '@/components/features/forms/EnhancedFormCard'
+import { FormStatisticsSection } from '@/components/features/forms/FormStatisticsSection'
 
 // Form type definition for better type safety
 interface Form {
@@ -25,17 +30,25 @@ interface Form {
     submissions: number
     fields: number
   }
+  fields?: Array<{
+    id: string
+    label: string
+    type: FieldType
+    placeholder?: string
+    required: boolean
+    order: number
+    options?: any[]
+    config?: Record<string, any>
+  }>
 }
 
 function FormsPageContent() {
-  const router = useRouter()
-  const { user } = useAuth()
-  const [forms, setForms] = useState<Form[]>([])
+  const { push } = useRouter()
+  const { user, logout } = useAuth()
+  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  
-  // UI state
   const [searchTerm, setSearchTerm] = useState('')
+  const [forms, setForms] = useState<Form[]>([])
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all')
   const [sortBy, setSortBy] = useState<'title' | 'date' | 'submissions'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -52,7 +65,7 @@ function FormsPageContent() {
         setLoading(true)
         const { data, error } = await formsService.getAllForms()
         if (error) setError(error)
-        else setForms(data || [])
+        else setForms(data as Form[] || [])
       } catch {
         setError('Failed to load forms')
       } finally {
@@ -103,28 +116,28 @@ function FormsPageContent() {
   // Helper function to duplicate a form
   const handleDuplicateForm = async (formId: string) => {
     try {
-      const { data: originalForm } = await formsService.getForm(formId)
-      if (!originalForm) {
+      const { data: originalForm, error: fetchError } = await formsService.getForm(formId)
+      if (fetchError || !originalForm) {
         setError('Failed to fetch form to duplicate')
         return
       }
       
       // Create new form with same data but modified title
-      const { data: newForm } = await formsService.createForm({
-        title: `${originalForm.title} (Copy)`,
-        description: originalForm.description,
+      const { data: newForm, error: createError } = await formsService.createForm({
+        title: `${(originalForm as Form).title} (Copy)`,
+        description: (originalForm as Form).description,
         published: false // Start as draft
       })
       
-      if (!newForm) {
+      if (createError || !newForm) {
         setError('Failed to create duplicate form')
         return
       }
       
       // Copy all fields if the form has any
-      if (originalForm.fields && originalForm.fields.length > 0) {
-        for (const field of originalForm.fields) {
-          await formsService.addField(newForm.id, {
+      if ((originalForm as Form).fields && (originalForm as Form).fields!.length > 0) {
+        for (const field of (originalForm as Form).fields!) {
+          await formsService.addField((newForm as Form).id, {
             label: field.label,
             type: field.type,
             placeholder: field.placeholder,
@@ -246,7 +259,7 @@ function FormsPageContent() {
         
         <div className="flex space-x-2">
           <button
-            onClick={() => router.push('/forms/create')}
+            onClick={() => push('/forms/create')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
           >
             <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,116 +292,29 @@ function FormsPageContent() {
         </div>
       </div>
       
-      {/* Filters and search */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Search */}
-          <div className="md:col-span-2">
-            <label htmlFor="search" className="sr-only">Search forms</label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              <input
-                id="search"
-                type="search"
-                placeholder="Search forms..."
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-          
-          {/* Status filter */}
-          <div>
-            <label htmlFor="status-filter" className="sr-only">Filter by status</label>
-            <select
-              id="status-filter"
-              className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as 'all' | 'published' | 'draft')}
-            >
-              <option value="all">All Forms</option>
-              <option value="published">Published</option>
-              <option value="draft">Drafts</option>
-            </select>
-          </div>
-          
-          {/* Sort */}
-          <div>
-            <label htmlFor="sort-by" className="sr-only">Sort by</label>
-            <div className="flex">
-              <button
-                className={`px-3 py-2 text-sm font-medium ${sortBy === 'date' ? 'text-blue-600' : 'text-gray-500'} hover:bg-gray-50 rounded-l border border-gray-300`}
-                onClick={() => handleSortChange('date')}
-              >
-                Date {getSortIndicator('date')}
-              </button>
-              <button
-                className={`px-3 py-2 text-sm font-medium ${sortBy === 'title' ? 'text-blue-600' : 'text-gray-500'} hover:bg-gray-50 border-t border-b border-gray-300`}
-                onClick={() => handleSortChange('title')}
-              >
-                Name {getSortIndicator('title')}
-              </button>
-              <button
-                className={`px-3 py-2 text-sm font-medium ${sortBy === 'submissions' ? 'text-blue-600' : 'text-gray-500'} hover:bg-gray-50 rounded-r border border-gray-300`}
-                onClick={() => handleSortChange('submissions')}
-              >
-                Responses {getSortIndicator('submissions')}
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        {/* Tags filter */}
-        {allTags.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {allTags.map(tag => (
-              <button
-                key={tag}
-                onClick={() => handleTagClick(tag)}
-                className={`px-3 py-1 rounded-full text-sm ${
-                  activeTag === tag 
-                    ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-                    : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
-                }`}
-              >
-                #{tag}
-              </button>
-            ))}
-            {activeTag && (
-              <button
-                onClick={() => setActiveTag(null)}
-                className="px-3 py-1 rounded-full text-sm text-gray-600 hover:bg-gray-100 border border-gray-200"
-              >
-                Clear Filter
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+      {/* Use SearchFilterBar component */}
+      <SearchFilterBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filter={filter}
+        onFilterChange={setFilter}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortChange={handleSortChange}
+        tags={allTags}
+        activeTag={activeTag}
+        onTagClick={handleTagClick}
+      />
       
       {/* Stats summary */}
       {forms.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-sm font-medium text-gray-500">Total Forms</h2>
-            <p className="mt-1 text-3xl font-semibold text-gray-900">{forms.length}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-sm font-medium text-gray-500">Published Forms</h2>
-            <p className="mt-1 text-3xl font-semibold text-green-600">{forms.filter(f => f.published).length}</p>
-          </div>
-          <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-sm font-medium text-gray-500">Total Submissions</h2>
-            <p className="mt-1 text-3xl font-semibold text-blue-600">
-              {forms.reduce((acc, form) => acc + (form._count?.submissions || 0), 0)}
-            </p>
-          </div>
-        </div>
+        <FormStatisticsSection 
+          totalForms={forms.length} 
+          publishedForms={forms.filter(f => f.published).length}
+          totalSubmissions={forms.reduce((acc, form) => acc + (form._count?.submissions || 0), 0)}
+          isLoading={loading}
+          className="mb-6"
+        />
       )}
       
       {/* Error state */}
@@ -431,7 +357,7 @@ function FormsPageContent() {
               </button>
             ) : (
               <button
-                onClick={() => router.push('/forms/create')}
+                onClick={() => push('/forms/create')}
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
               >
                 <svg className="mr-2 -ml-1 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -445,128 +371,32 @@ function FormsPageContent() {
       )}
       
       {/* Grid view */}
-      {filteredAndSortedForms.length > 0 && viewMode === 'grid' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAndSortedForms.map((form) => (
-            <div key={form.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-              <div className="p-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900 hover:text-blue-600">
-                      <Link href={`/forms/${form.id}`}>
-                        {form.title}
-                      </Link>
-                    </h2>
-                  
-                    {form.description && (
-                      <p className="mt-2 text-gray-600 line-clamp-2">
-                        {form.description.split(/#\w+/g).join(' ')} {/* Remove hashtags from display */}
-                      </p>
-                    )}
-                  </div>
-                  
-                  {user?.role === 'SUPER_ADMIN' && form.client && (
-                    <span className="inline-block px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                      {form.client.name}
-                    </span>
-                  )}
-                </div>
-                
-                {/* Tags */}
-                {form.description && extractTags(form.description).length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1">
-                    {extractTags(form.description).map(tag => (
-                      <span 
-                        key={tag} 
-                        className="inline-block px-2 py-0.5 text-xs text-gray-600 hover:text-blue-600 cursor-pointer"
-                        onClick={() => handleTagClick(tag)}
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                        form.published ? 'bg-green-500' : 'bg-yellow-500'
-                      }`} />
-                      {form.published ? 'Published' : 'Draft'}
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      {form._count?.fields || 0} fields
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <svg className="w-4 h-4 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-                      </svg>
-                      {form._count?.submissions || 0} responses
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mt-5 flex flex-col space-y-2">
-                  <Link
-                    href={`/forms/${form.id}`}
-                    className="w-full bg-gray-100 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-200 text-center"
-                  >
-                    View Details
-                  </Link>
-                  
-                  <div className="flex space-x-2">
-                    {form.published && (
-                      <Link
-                        href={`/forms/public/${form.clientId}/${form.slug}`}
-                        target="_blank"
-                        className="flex-1 bg-green-50 text-green-700 py-1 px-3 rounded-md hover:bg-green-100 text-center text-sm flex items-center justify-center"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        Preview
-                      </Link>
-                    )}
-                    
-                    <button
-                      onClick={() => handleDuplicateForm(form.id)}
-                      className="flex-1 bg-blue-50 text-blue-700 py-1 px-3 rounded-md hover:bg-blue-100 text-center text-sm flex items-center justify-center"
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                      Duplicate
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        setFormToDelete(form)
-                        setShowDeleteModal(true)
-                      }}
-                      className="flex-1 bg-red-50 text-red-700 py-1 px-3 rounded-md hover:bg-red-100 text-center text-sm flex items-center justify-center"
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+      {viewMode === 'grid' && filteredAndSortedForms.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredAndSortedForms.map((form) => {
+            const tags = extractTags(form.description || '');
+            
+            return (
+              <EnhancedFormCard
+                key={form.id}
+                form={form}
+                onDelete={(form) => {
+                  setFormToDelete(form)
+                  setShowDeleteModal(true)
+                }}
+                onDuplicate={handleDuplicateForm}
+                tags={tags}
+                onTagClick={handleTagClick}
+                activeTag={activeTag}
+                showClientInfo={user?.role === 'SUPER_ADMIN'}
+              />
+            );
+          })}
         </div>
       )}
       
       {/* List view */}
-      {filteredAndSortedForms.length > 0 && viewMode === 'list' && (
+      {viewMode === 'list' && filteredAndSortedForms.length > 0 && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -708,30 +538,25 @@ function FormsPageContent() {
       
       {/* Delete Confirmation Modal */}
       {showDeleteModal && formToDelete && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Delete Form</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Are you sure you want to delete <span className="font-medium text-gray-700">"{formToDelete.title}"</span>? This action cannot be undone and all submissions will be permanently lost.
+            <p className="text-gray-500 mb-6">
+              Are you sure you want to delete <strong>{formToDelete.title}</strong>? This action cannot be undone.
             </p>
             
-            <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+            <div className="flex justify-end space-x-3">
               <button
-                type="button"
-                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:col-start-2 sm:text-sm"
-                onClick={handleDeleteConfirm}
-              >
-                Delete
-              </button>
-              <button
-                type="button"
-                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:col-start-1 sm:text-sm"
-                onClick={() => {
-                  setShowDeleteModal(false)
-                  setFormToDelete(null)
-                }}
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
               >
                 Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+              >
+                Delete
               </button>
             </div>
           </div>
@@ -743,8 +568,8 @@ function FormsPageContent() {
 
 export default function FormsPage() {
   return (
-    <AuthProvider>
+    <div className="container mx-auto px-4 py-8">
       <FormsPageContent />
-    </AuthProvider>
+    </div>
   )
 }

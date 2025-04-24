@@ -776,8 +776,8 @@ try {
               title="Total Users"
               value={stats.totalUsers || 0}
               Icon={UserIcon}
-              borderColor="border-indigo-500"
-              textColor="text-indigo-600"
+              borderColor="purple"
+              textColor="purple"
               isLoading={loading}
             />
             <DashboardStatsCard
@@ -785,16 +785,16 @@ try {
               value={stats.totalClients || 0}
               prevValue={stats.totalClients - stats.clientsAddedCurrentPeriod}
               Icon={UsersIcon}
-              borderColor="border-green-500"
-              textColor="text-green-600"
+              borderColor="green"
+              textColor="green"
               isLoading={loading}
             />
             <DashboardStatsCard
               title="Total Forms"
               value={stats.totalForms || 0}
               Icon={FileTextIcon}
-              borderColor="border-yellow-500"
-              textColor="text-yellow-600"
+              borderColor="yellow"
+              textColor="yellow"
               isLoading={loading}
             />
             <DashboardStatsCard
@@ -802,24 +802,24 @@ try {
               value={stats.totalSubs || 0}
               prevValue={prevPeriodStats.totalSubs}
               Icon={MessageSquareIcon}
-              borderColor="border-blue-500"
-              textColor="text-blue-600"
+              borderColor="blue"
+              textColor="blue"
               isLoading={loading}
             />
             <DashboardStatsCard
               title="Published Forms"
               value={stats.publishedForms || 0}
               Icon={CheckCircleIcon}
-              borderColor="border-teal-500"
-              textColor="text-teal-600"
+              borderColor="green"
+              textColor="green"
               isLoading={loading}
             />
             <DashboardStatsCard
               title="Draft Forms"
               value={stats.draftForms || 0}
               Icon={InboxIcon}
-              borderColor="border-gray-500"
-              textColor="text-gray-600"
+              borderColor="gray"
+              textColor="gray"
               isLoading={loading}
             />
           </div>
@@ -983,24 +983,24 @@ try {
               title="Your Forms"
               value={stats.totalFormsClient || 0}
               Icon={FileTextIcon}
-              borderColor="border-yellow-500"
-              textColor="text-yellow-600"
+              borderColor="yellow"
+              textColor="yellow"
               isLoading={loading}
             />
             <DashboardStatsCard
               title="Published"
               value={stats.publishedFormsClient || 0}
               Icon={CheckCircleIcon}
-              borderColor="border-teal-500"
-              textColor="text-teal-600"
+              borderColor="green"
+              textColor="green"
               isLoading={loading}
             />
             <DashboardStatsCard
               title="Drafts"
               value={stats.draftFormsClient || 0}
               Icon={InboxIcon}
-              borderColor="border-gray-500"
-              textColor="text-gray-600"
+              borderColor="gray"
+              textColor="gray"
               isLoading={loading}
             />
             <DashboardStatsCard
@@ -1008,8 +1008,8 @@ try {
               value={stats.totalSubsClient || 0}
               prevValue={prevPeriodStats.totalSubsClient}
               Icon={MessageSquareIcon}
-              borderColor="border-blue-500"
-              textColor="text-blue-600"
+              borderColor="blue"
+              textColor="blue"
               isLoading={loading}
             />
           </div>
